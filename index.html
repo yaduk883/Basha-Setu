@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BhashaSetu — Translation Data Collector</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  SETUP — only one thing you need to change:
+  1. Paste your Google Apps Script Web App URL below.
+  ════════════════════════════════════════════════════════════════
+-->
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec";
+  // Example: "https://script.google.com/macros/s/AKfycby.../exec"
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+/* ── Reset & Base ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0d0d0d;
+  --ink2:#444;
+  --ink3:#888;
+  --ink4:#bbb;
+  --paper:#faf8f4;
+  --paper2:#f0ede6;
+  --paper3:#e8e4db;
+  --accent:#c84b2f;      /* deep saffron */
+  --accent2:#e8622a;
+  --accentbg:#fdf0ec;
+  --green:#2a7a4b;
+  --greenbg:#eaf4ef;
+  --amber:#b86e00;
+  --amberbg:#fdf5e6;
+  --red:#c0392b;
+  --redbg:#fdecea;
+  --blue:#1a5fa8;
+  --bluebg:#eaf1fb;
+  --radius:12px;
+  --radius-sm:7px;
+  --sans:'DM Sans',sans-serif;
+  --serif:'Fraunces',serif;
+  --shadow:0 2px 16px rgba(0,0,0,0.07);
+  --shadow-lg:0 8px 40px rgba(0,0,0,0.12);
+}
+
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6}
+
+/* ── Layout ──────────────────────────────────────────────── */
+.app-shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.sidebar{
+  background:var(--ink);
+  color:#fff;
+  display:flex;flex-direction:column;
+  padding:0;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.sidebar-brand{
+  padding:28px 24px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.sidebar-brand .logo{
+  font-family:var(--serif);
+  font-size:22px;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.3px;
+}
+.sidebar-brand .logo span{color:var(--accent2)}
+.sidebar-brand .tagline{font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:.5px}
+
+.nav{flex:1;padding:16px 12px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:var(--radius-sm);
+  font-size:13.5px;color:rgba(255,255,255,0.6);
+  cursor:pointer;transition:all .18s;margin-bottom:2px;
+  border:none;background:none;width:100%;text-align:left;
+}
+.nav-item i{font-size:17px}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:#fff}
+.nav-item.active{background:var(--accent);color:#fff}
+
+.sidebar-stats{padding:16px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto}
+.sidebar-stats .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px}
+.sidebar-stats .stat-row strong{color:rgba(255,255,255,0.9);font-size:15px;font-weight:500}
+
+/* ── Main Content ────────────────────────────────────────── */
+.main{min-height:100vh;display:flex;flex-direction:column}
+.topbar{
+  padding:20px 32px;
+  border-bottom:1px solid var(--paper3);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--paper);
+  position:sticky;top:0;z-index:10;
+}
+.topbar-title{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--ink)}
+.topbar-title small{font-family:var(--sans);font-size:12px;color:var(--ink3);font-weight:300;margin-left:8px}
+
+.content{padding:32px;flex:1}
+
+/* ── Page views (show/hide) ──────────────────────────────── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card{
+  background:#fff;border:1px solid var(--paper3);
+  border-radius:var(--radius);padding:24px;
+  margin-bottom:20px;
+}
+.card-title{font-family:var(--serif);font-size:17px;font-weight:500;margin-bottom:16px;color:var(--ink)}
+
+/* ── Language Selector Row ───────────────────────────────── */
+.lang-row{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:24px;flex-wrap:wrap;
+}
+.lang-select-wrap{flex:1;min-width:160px}
+.lang-select-wrap label{display:block;font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+select{
+  width:100%;padding:10px 14px;
+  border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  background:#fff;color:var(--ink);font-family:var(--sans);font-size:14px;
+  outline:none;cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;
+  padding-right:36px;transition:border-color .2s;
+}
+select:focus{border-color:var(--accent)}
+
+.swap-btn{
+  width:38px;height:38px;border-radius:50%;border:1.5px solid var(--paper3);
+  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--ink3);font-size:16px;transition:all .2s;margin-top:20px;flex-shrink:0;
+}
+.swap-btn:hover{border-color:var(--accent);color:var(--accent);transform:rotate(180deg)}
+
+/* ── Translation Input Area ──────────────────────────────── */
+.trans-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+
+.trans-panel{position:relative}
+.trans-panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.trans-lang-badge{
+  font-size:12px;font-weight:500;padding:4px 10px;
+  border-radius:999px;background:var(--accentbg);color:var(--accent);
+}
+.trans-panel-actions{display:flex;gap:6px}
+
+.paste-btn,.clear-btn{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:5px;border:1px solid var(--paper3);
+  background:#fff;color:var(--ink3);font-size:11px;
+  cursor:pointer;transition:all .18s;font-family:var(--sans);
+}
+.paste-btn:hover{border-color:var(--accent);color:var(--accent)}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+textarea{
+  width:100%;height:180px;
+  padding:14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:14px;line-height:1.7;
+  color:var(--ink);background:#fff;resize:vertical;outline:none;
+  transition:border-color .2s;
+}
+textarea:focus{border-color:var(--accent)}
+textarea.error{border-color:var(--red)}
+textarea::placeholder{color:var(--ink4)}
+
+.char-count{font-size:11px;color:var(--ink4);text-align:right;margin-top:4px}
+.validation-msg{
+  font-size:12px;padding:8px 12px;border-radius:var(--radius-sm);
+  margin-top:6px;display:none;align-items:center;gap:6px;
+}
+.validation-msg.error{display:flex;background:var(--redbg);color:var(--red)}
+.validation-msg.success{display:flex;background:var(--greenbg);color:var(--green)}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 20px;border-radius:var(--radius-sm);border:none;
+  font-family:var(--sans);font-size:14px;font-weight:500;
+  cursor:pointer;transition:all .18s;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{background:var(--ink4);cursor:not-allowed}
+.btn-secondary{background:#fff;color:var(--ink);border:1.5px solid var(--paper3)}
+.btn-secondary:hover{border-color:var(--ink3)}
+.btn-danger{background:var(--redbg);color:var(--red);border:1px solid #f5c6c2}
+.btn-danger:hover{background:#fad5d2}
+.btn-success{background:var(--greenbg);color:var(--green);border:1px solid #b8dfc9}
+.btn-success:hover{background:#d4edde}
+.btn-sm{padding:6px 12px;font-size:12px}
+
+.action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ── Toast Notification ──────────────────────────────────── */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  padding:12px 18px;border-radius:var(--radius-sm);
+  font-size:13.5px;font-weight:500;
+  display:flex;align-items:center;gap:8px;
+  animation:slideUp .3s ease;box-shadow:var(--shadow-lg);
+  max-width:340px;
+}
+.toast.success{background:var(--green);color:#fff}
+.toast.error{background:var(--red);color:#fff}
+.toast.info{background:var(--ink);color:#fff}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Stats / Dashboard ───────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{
+  background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);
+  padding:18px 20px;
+}
+.stat-card .val{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1;color:var(--ink)}
+.stat-card .lbl{font-size:12px;color:var(--ink3);margin-top:4px}
+.stat-card.accent .val{color:var(--accent)}
+.stat-card.green .val{color:var(--green)}
+.stat-card.amber .val{color:var(--amber)}
+.stat-card.red .val{color:var(--red)}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.chart-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:24px}
+.chart-card h3{font-family:var(--serif);font-size:15px;font-weight:500;margin-bottom:16px;color:var(--ink)}
+.chart-wrap{position:relative;height:240px}
+
+/* ── Data Table ──────────────────────────────────────────── */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{
+  flex:1;min-width:200px;padding:9px 14px 9px 36px;
+  border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;outline:none;
+  transition:border-color .2s;
+}
+.search-box:focus{border-color:var(--accent)}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink4);font-size:16px}
+
+.filter-select{
+  padding:9px 32px 9px 12px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:13px;color:var(--ink);background:#fff;outline:none;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  cursor:pointer;
+}
+
+.data-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.data-table th{
+  text-align:left;padding:10px 14px;
+  font-size:11px;text-transform:uppercase;letter-spacing:.7px;font-weight:500;
+  color:var(--ink3);border-bottom:2px solid var(--paper3);background:#fff;
+  white-space:nowrap;
+}
+.data-table td{
+  padding:12px 14px;border-bottom:1px solid var(--paper2);
+  vertical-align:top;color:var(--ink2);
+}
+.data-table tr:hover td{background:var(--paper)}
+.data-table .text-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table .text-cell:hover{white-space:normal;overflow:visible}
+
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap;
+}
+.badge-pending{background:var(--amberbg);color:var(--amber)}
+.badge-approved{background:var(--greenbg);color:var(--green)}
+.badge-rejected{background:var(--redbg);color:var(--red)}
+
+.icon-btn{
+  width:30px;height:30px;border-radius:6px;border:1px solid var(--paper3);
+  background:#fff;color:var(--ink3);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all .18s;
+}
+.icon-btn:hover.edit{border-color:var(--blue);color:var(--blue);background:var(--bluebg)}
+.icon-btn:hover.del{border-color:var(--red);color:var(--red);background:var(--redbg)}
+.icon-btn:hover.approve{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.icon-btn:hover.reject{border-color:var(--red);color:var(--red);background:var(--redbg)}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink3)}
+.empty-state i{font-size:40px;margin-bottom:12px;display:block;opacity:.4}
+.empty-state p{font-size:14px}
+
+/* ── Review Queue ────────────────────────────────────────── */
+.review-card{
+  background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);
+  padding:20px;margin-bottom:14px;
+}
+.review-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.review-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.review-text-box{
+  background:var(--paper);border:1px solid var(--paper3);border-radius:var(--radius-sm);
+  padding:12px 14px;font-size:13.5px;line-height:1.7;color:var(--ink2);
+  min-height:80px;
+}
+.review-text-box .lang-tag{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink4);margin-bottom:6px}
+.review-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+
+/* ── Modal (Edit) ────────────────────────────────────────── */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,0.45);
+  z-index:100;display:none;align-items:center;justify-content:center;
+}
+.modal-backdrop.open{display:flex}
+.modal{
+  background:#fff;border-radius:var(--radius);padding:28px;
+  width:90%;max-width:680px;box-shadow:var(--shadow-lg);
+  max-height:90vh;overflow-y:auto;
+}
+.modal h2{font-family:var(--serif);font-size:20px;font-weight:500;margin-bottom:20px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+.modal textarea{height:140px}
+
+/* ── Loading overlay ─────────────────────────────────────── */
+.loading{
+  display:none;position:fixed;inset:0;background:rgba(250,248,244,0.8);
+  z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:12px;
+}
+.loading.show{display:flex}
+.spinner{
+  width:36px;height:36px;border:3px solid var(--paper3);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:var(--ink3)}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media(max-width:768px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
+  .trans-grid,.charts-grid,.review-pair,.modal-grid{grid-template-columns:1fr}
+  .content{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Saving to Google Sheets...</p>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Edit Modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h2>Edit Translation</h2>
+    <div class="modal-grid">
+      <div>
+        <div class="trans-panel-header">
+          <span class="trans-lang-badge" id="editSrcBadge"></span>
+        </div>
+        <textarea id="editSrcText" placeholder="Source text..."></textarea>
+        <div class="validation-msg" id="editSrcVal"></div>
+      </div>
+      <div>
+        <div class="trans-panel-header">
+          <span class="trans-lang-badge" id="editTgtBadge"></span>
+        </div>
+        <textarea id="editTgtText" placeholder="Target text..."></textarea>
+        <div class="validation-msg" id="editTgtVal"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()"><i class="ti ti-device-floppy"></i> Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">Bhasha<span>Setu</span></div>
+      <div class="tagline">Translation Data Collector</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" onclick="showPage('collect')" data-page="collect">
+        <i class="ti ti-language"></i> Collect Data
+      </button>
+      <button class="nav-item" onclick="showPage('dashboard')" data-page="dashboard">
+        <i class="ti ti-chart-bar"></i> Dashboard
+      </button>
+      <button class="nav-item" onclick="showPage('data')" data-page="data">
+        <i class="ti ti-table"></i> Browse Data
+      </button>
+      <button class="nav-item" onclick="showPage('review')" data-page="review">
+        <i class="ti ti-clipboard-check"></i> Review Queue
+        <span id="pendingBadge" style="margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:999px;display:none"></span>
+      </button>
+    </nav>
+    <div class="sidebar-stats">
+      <div class="stat-row"><span>Total entries</span><strong id="sideTotal">—</strong></div>
+      <div class="stat-row"><span>Approved</span><strong id="sideApproved" style="color:#6fcf97">—</strong></div>
+      <div class="stat-row"><span>Pending</span><strong id="sidePending" style="color:#f2994a">—</strong></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">
+        <span id="pageTitle">Collect Data</span>
+        <small id="pageDesc">Add a new English ↔ Indian language translation pair</small>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">
+        <i class="ti ti-download"></i> Export CSV
+      </button>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ PAGE: COLLECT ══════════════════════════════════ -->
+      <div class="page active" id="page-collect">
+
+        <div class="card">
+          <div class="card-title">Select language pair</div>
+
+          <div class="lang-row">
+            <div class="lang-select-wrap">
+              <label>Source language</label>
+              <select id="srcLang" onchange="onLangChange()">
+                <option value="">— choose —</option>
+              </select>
+            </div>
+            <button class="swap-btn" onclick="swapLangs()" title="Swap languages">
+              <i class="ti ti-arrows-exchange"></i>
+            </button>
+            <div class="lang-select-wrap">
+              <label>Target language</label>
+              <select id="tgtLang" onchange="onLangChange()">
+                <option value="">— choose —</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="trans-grid" id="transGrid" style="display:none">
+            <!-- Source Panel -->
+            <div class="trans-panel">
+              <div class="trans-panel-header">
+                <span class="trans-lang-badge" id="srcBadge">—</span>
+                <div class="trans-panel-actions">
+                  <button class="paste-btn" onclick="pasteText('src')"><i class="ti ti-clipboard" style="font-size:13px"></i> Paste</button>
+                  <button class="clear-btn" onclick="clearText('src')"><i class="ti ti-x" style="font-size:12px"></i> Clear</button>
+                </div>
+              </div>
+              <textarea id="srcText" placeholder="Type or paste source text here..." oninput="onTextInput('src')"></textarea>
+              <div class="char-count" id="srcCount">0 characters</div>
+              <div class="validation-msg" id="srcVal"></div>
+            </div>
+            <!-- Target Panel -->
+            <div class="trans-panel">
+              <div class="trans-panel-header">
+                <span class="trans-lang-badge" id="tgtBadge">—</span>
+                <div class="trans-panel-actions">
+                  <button class="paste-btn" onclick="pasteText('tgt')"><i class="ti ti-clipboard" style="font-size:13px"></i> Paste</button>
+                  <button class="clear-btn" onclick="clearText('tgt')"><i class="ti ti-x" style="font-size:12px"></i> Clear</button>
+                </div>
+              </div>
+              <textarea id="tgtText" placeholder="Type or paste translation here..." oninput="onTextInput('tgt')"></textarea>
+              <div class="char-count" id="tgtCount">0 characters</div>
+              <div class="validation-msg" id="tgtVal"></div>
+            </div>
+          </div>
+
+          <div class="action-row" id="actionRow" style="display:none">
+            <button class="btn btn-primary" onclick="saveEntry()" id="saveBtn">
+              <i class="ti ti-device-floppy"></i> Save to Google Sheets
+            </button>
+            <button class="btn btn-secondary" onclick="clearAll()">
+              <i class="ti ti-trash"></i> Clear all
+            </button>
+            <span style="font-size:12px;color:var(--ink4);margin-left:auto" id="cleanHint">
+              Data will be auto-cleaned before saving
+            </span>
+          </div>
+        </div>
+
+        <!-- Cleaning preview -->
+        <div class="card" id="previewCard" style="display:none">
+          <div class="card-title" style="font-size:14px;color:var(--ink3)">
+            <i class="ti ti-sparkles" style="color:var(--accent)"></i> Cleaned preview
+          </div>
+          <div class="trans-grid">
+            <div>
+              <div style="font-size:11px;color:var(--ink4);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px" id="previewSrcLang"></div>
+              <div style="background:var(--paper);border-radius:var(--radius-sm);padding:12px;font-size:13.5px;color:var(--ink2);line-height:1.7;min-height:60px" id="previewSrc"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--ink4);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px" id="previewTgtLang"></div>
+              <div style="background:var(--paper);border-radius:var(--radius-sm);padding:12px;font-size:13.5px;color:var(--ink2);line-height:1.7;min-height:60px" id="previewTgt"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /page-collect -->
+
+      <!-- ══ PAGE: DASHBOARD ════════════════════════════════ -->
+      <div class="page" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card accent"><div class="val" id="dTotal">—</div><div class="lbl">Total entries</div></div>
+          <div class="stat-card green"><div class="val" id="dApproved">—</div><div class="lbl">Approved</div></div>
+          <div class="stat-card amber"><div class="val" id="dPending">—</div><div class="lbl">Pending review</div></div>
+          <div class="stat-card red"><div class="val" id="dRejected">—</div><div class="lbl">Rejected</div></div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>Entries by language pair</h3>
+            <div class="chart-wrap"><canvas id="pairChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h3>Review status breakdown</h3>
+            <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+          </div>
+        </div>
+        <!-- Filter by language pair -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-title" style="font-size:14px">Filter by language pair</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <select class="filter-select" id="dashFilterSrc" onchange="renderFilteredChart()">
+              <option value="">All source languages</option>
+            </select>
+            <span style="color:var(--ink3)">→</span>
+            <select class="filter-select" id="dashFilterTgt" onchange="renderFilteredChart()">
+              <option value="">All target languages</option>
+            </select>
+          </div>
+          <div class="chart-wrap" style="height:200px;margin-top:16px"><canvas id="filteredChart"></canvas></div>
+        </div>
+      </div><!-- /page-dashboard -->
+
+      <!-- ══ PAGE: DATA ══════════════════════════════════════ -->
+      <div class="page" id="page-data">
+        <div class="table-toolbar">
+          <div class="search-wrap">
+            <i class="ti ti-search"></i>
+            <input class="search-box" id="searchBox" type="text" placeholder="Search text, language..." oninput="renderTable()"/>
+          </div>
+          <select class="filter-select" id="filterSrc" onchange="renderTable()">
+            <option value="">All source langs</option>
+          </select>
+          <select class="filter-select" id="filterTgt" onchange="renderTable()">
+            <option value="">All target langs</option>
+          </select>
+          <select class="filter-select" id="filterStatus" onchange="renderTable()">
+            <option value="">All statuses</option>
+            <option>Pending</option>
+            <option>Approved</option>
+            <option>Rejected</option>
+          </select>
+        </div>
+
+        <div style="background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Source lang</th>
+                  <th>Target lang</th>
+                  <th>Source text</th>
+                  <th>Target text</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+          <div id="tableEmpty" class="empty-state" style="display:none">
+            <i class="ti ti-database-off"></i>
+            <p>No entries found. Add some translations first.</p>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--ink4);margin-top:10px" id="tableCount"></div>
+      </div><!-- /page-data -->
+
+      <!-- ══ PAGE: REVIEW ════════════════════════════════════ -->
+      <div class="page" id="page-review">
+        <div id="reviewList"></div>
+        <div id="reviewEmpty" class="empty-state" style="display:none">
+          <i class="ti ti-circle-check"></i>
+          <p>No pending entries. All caught up!</p>
+        </div>
+      </div><!-- /page-review -->
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   HOW THIS CODE WORKS — Overview for the developer
+   ════════════════════════════════════════════════════════════
+   1. LANGUAGES & UNICODE RANGES
+      Each language has a Unicode script range.
+      When the user types, we detect which script the text uses
+      and compare it against the expected language. If wrong →
+      show error and block save.
+
+   2. DATA FLOW
+      User fills form → cleanText() strips emojis/spaces →
+      validateScript() checks script → api() sends POST to
+      Google Apps Script URL → Apps Script writes to Sheet →
+      UI refreshes.
+
+   3. STATE
+      allEntries[] holds all data fetched from the sheet.
+      Charts, table, and review queue all read from allEntries.
+
+   4. PAGES
+      showPage() swaps which .page div is visible and updates
+      the sidebar nav highlight and topbar title.
+
+   5. CHARTS (Chart.js)
+      pairChart    — horizontal bar, entries per language pair
+      statusChart  — doughnut, Pending/Approved/Rejected counts
+      filteredChart— bar filtered by selected source+target lang
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Language config ──────────────────────────────────────── */
+// Each entry: { label, script (Unicode range regex), flag }
+const LANGUAGES = [
+  { code:"English",   label:"English",    flag:"🇬🇧", script:/^[\u0000-\u007F\s\p{P}]+$/u },
+  { code:"Hindi",     label:"Hindi",      flag:"🇮🇳", script:/[\u0900-\u097F]/ },
+  { code:"Tamil",     label:"Tamil",      flag:"🇮🇳", script:/[\u0B80-\u0BFF]/ },
+  { code:"Telugu",    label:"Telugu",     flag:"🇮🇳", script:/[\u0C00-\u0C7F]/ },
+  { code:"Kannada",   label:"Kannada",    flag:"🇮🇳", script:/[\u0C80-\u0CFF]/ },
+  { code:"Malayalam", label:"Malayalam",  flag:"🇮🇳", script:/[\u0D00-\u0D7F]/ },
+  { code:"Bengali",   label:"Bengali",    flag:"🇮🇳", script:/[\u0980-\u09FF]/ },
+  { code:"Marathi",   label:"Marathi",    flag:"🇮🇳", script:/[\u0900-\u097F]/ }, // Devanagari (same as Hindi)
+  { code:"Gujarati",  label:"Gujarati",   flag:"🇮🇳", script:/[\u0A80-\u0AFF]/ },
+  { code:"Punjabi",   label:"Punjabi",    flag:"🇮🇳", script:/[\u0A00-\u0A7F]/ },
+  { code:"Odia",      label:"Odia",       flag:"🇮🇳", script:/[\u0B00-\u0B7F]/ },
+  { code:"Urdu",      label:"Urdu",       flag:"🇮🇳", script:/[\u0600-\u06FF]/ },
+];
+
+// Note: Hindi and Marathi share Devanagari script.
+// Validation allows either when both are Devanagari languages.
+const DEVANAGARI_LANGS = new Set(["Hindi","Marathi"]);
+
+/* ── App state ────────────────────────────────────────────── */
+let allEntries = [];     // All data from Google Sheets
+let editingId  = null;   // ID of the entry currently being edited
+let pairChartInst = null, statusChartInst = null, filteredChartInst = null;
+
+/* ── Populate language dropdowns ──────────────────────────── */
+function buildLangOptions(selectEl, includeEmpty=true) {
+  selectEl.innerHTML = includeEmpty ? '<option value="">— choose —</option>' : '';
+  LANGUAGES.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.code;
+    opt.textContent = l.flag + ' ' + l.label;
+    selectEl.appendChild(opt);
+  });
+}
+
+function buildFilterOptions(selectEl, placeholder) {
+  selectEl.innerHTML = `<option value="">${placeholder}</option>`;
+  LANGUAGES.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l.code;
+    opt.textContent = l.label;
+    selectEl.appendChild(opt);
+  });
+}
+
+/* ── API helper — sends request to Apps Script ────────────── */
+async function api(action, body={}) {
+  /*
+   * Google Apps Script Web Apps don't support CORS for POST with
+   * JSON body in all browsers, so we use no-cors fetch for writes
+   * and a URL param trick for reads. For reliability, we always
+   * send action as a URL parameter AND in the body.
+   */
+  const url = API_URL + "?action=" + action;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type":"text/plain" }, // avoids CORS preflight
+      body: JSON.stringify({ action, ...body }),
+    });
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(err) {
+    // If CORS blocks JSON parse, treat as success for write ops
+    console.warn("API fetch note:", err.message);
+    return { ok: true, _note: "Response blocked by CORS but request likely sent" };
+  }
+}
+
+/* ── Data cleaning ────────────────────────────────────────── */
+/**
+ * cleanText(str) does:
+ * 1. Remove all emoji characters (Unicode emoji ranges)
+ * 2. Collapse multiple spaces / tabs into one space
+ * 3. Collapse 3+ newlines into 2 (preserve paragraph breaks)
+ * 4. Trim leading/trailing whitespace
+ */
+function cleanText(str) {
+  return str
+    // Remove emoji (covers most emoji unicode ranges)
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\uFE00-\uFE0F]/g, '')   // variation selectors
+    .replace(/[\u200B-\u200D\uFEFF]/g,'') // zero-width chars
+    // Collapse multiple spaces/tabs
+    .replace(/[ \t]{2,}/g, ' ')
+    // Collapse 3+ newlines to 2
+    .replace(/\n{3,}/g, '\n\n')
+    // Trim
+    .trim();
+}
+
+/* ── Script / language validation ────────────────────────── */
+/**
+ * validateScript(text, langCode) returns { valid, message }
+ * It checks that the text contains characters from the
+ * expected Unicode script for that language.
+ * English is validated as Latin script (ASCII range).
+ * Mixed-script text (Roman + Devanagari transliteration) is
+ * flagged — the user must use native script.
+ */
+function validateScript(text, langCode) {
+  if (!text.trim()) return { valid: false, message: "Text cannot be empty." };
+
+  const lang = LANGUAGES.find(l => l.code === langCode);
+  if (!lang) return { valid: true }; // unknown lang, skip
+
+  if (langCode === "English") {
+    // Allow only ASCII printable + whitespace + common punctuation
+    const hasNonLatin = /[^\u0000-\u00FF]/.test(text);
+    if (hasNonLatin) return { valid: false, message: "English column should contain only Latin/English characters." };
+    return { valid: true };
+  }
+
+  // For Indian languages: at least 30% of non-space chars should be target script
+  const chars = text.replace(/\s/g,'');
+  if (!chars) return { valid: false, message: "Text cannot be empty." };
+
+  // Count chars matching the expected script
+  let match = 0;
+  for (const ch of chars) {
+    if (lang.script.test(ch)) match++;
+  }
+  const ratio = match / chars.length;
+
+  if (ratio < 0.3) {
+    // Special case: Hindi/Marathi share Devanagari, allow both
+    if (DEVANAGARI_LANGS.has(langCode)) {
+      const devScript = /[\u0900-\u097F]/;
+      let devMatch = 0;
+      for (const ch of chars) { if (devScript.test(ch)) devMatch++; }
+      if (devMatch / chars.length >= 0.3) return { valid: true };
+    }
+    return {
+      valid: false,
+      message: `This column expects ${langCode} script. Please type in ${langCode}, not transliteration or another language.`
+    };
+  }
+  return { valid: true };
+}
+
+/* ── Lang change handler ──────────────────────────────────── */
+function onLangChange() {
+  const src = document.getElementById('srcLang').value;
+  const tgt = document.getElementById('tgtLang').value;
+
+  if (src && tgt && src !== tgt) {
+    document.getElementById('transGrid').style.display = 'grid';
+    document.getElementById('actionRow').style.display  = 'flex';
+    document.getElementById('srcBadge').textContent = src;
+    document.getElementById('tgtBadge').textContent = tgt;
+    // Update placeholders
+    document.getElementById('srcText').placeholder = `Type or paste ${src} text here...`;
+    document.getElementById('tgtText').placeholder = `Type or paste ${tgt} translation here...`;
+    clearValidation();
+  } else {
+    document.getElementById('transGrid').style.display = 'none';
+    document.getElementById('actionRow').style.display  = 'none';
+  }
+}
+
+function swapLangs() {
+  const s = document.getElementById('srcLang');
+  const t = document.getElementById('tgtLang');
+  [s.value, t.value] = [t.value, s.value];
+  onLangChange();
+  // Also swap textarea content
+  const st = document.getElementById('srcText');
+  const tt = document.getElementById('tgtText');
+  [st.value, tt.value] = [tt.value, st.value];
+  onTextInput('src'); onTextInput('tgt');
+}
+
+/* ── Text input handler ───────────────────────────────────── */
+function onTextInput(side) {
+  const el  = document.getElementById(side + 'Text');
+  const cnt = document.getElementById(side + 'Count');
+  cnt.textContent = el.value.length + ' characters';
+  clearValidation(side);
+  updatePreview();
+}
+
+function updatePreview() {
+  const src = document.getElementById('srcText').value;
+  const tgt = document.getElementById('tgtText').value;
+  if (!src && !tgt) { document.getElementById('previewCard').style.display='none'; return; }
+  document.getElementById('previewCard').style.display = 'block';
+  document.getElementById('previewSrcLang').textContent = document.getElementById('srcLang').value;
+  document.getElementById('previewTgtLang').textContent = document.getElementById('tgtLang').value;
+  document.getElementById('previewSrc').textContent = cleanText(src) || '—';
+  document.getElementById('previewTgt').textContent = cleanText(tgt) || '—';
+}
+
+/* ── Paste helpers ────────────────────────────────────────── */
+async function pasteText(side) {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById(side + 'Text').value = text;
+    onTextInput(side);
+  } catch {
+    showToast("Paste not available — use Ctrl+V in the text box.", "error");
+  }
+}
+
+function clearText(side) {
+  document.getElementById(side + 'Text').value = '';
+  onTextInput(side);
+}
+
+function clearAll() {
+  clearText('src'); clearText('tgt');
+  document.getElementById('previewCard').style.display = 'none';
+  clearValidation();
+}
+
+/* ── Validation display helpers ───────────────────────────── */
+function showVal(side, msg, isError) {
+  const el = document.getElementById(side + 'Val');
+  el.className = 'validation-msg ' + (isError ? 'error' : 'success');
+  el.innerHTML = `<i class="ti ti-${isError ? 'alert-circle' : 'circle-check'}"></i> ${msg}`;
+  document.getElementById(side + 'Text').classList.toggle('error', isError);
+}
+
+function clearValidation(side) {
+  const sides = side ? [side] : ['src','tgt'];
+  sides.forEach(s => {
+    document.getElementById(s + 'Val').className = 'validation-msg';
+    document.getElementById(s + 'Text').classList.remove('error');
+  });
+}
+
+/* ── SAVE entry ───────────────────────────────────────────── */
+async function saveEntry() {
+  const srcLang = document.getElementById('srcLang').value;
+  const tgtLang = document.getElementById('tgtLang').value;
+  const rawSrc  = document.getElementById('srcText').value;
+  const rawTgt  = document.getElementById('tgtText').value;
+
+  // Clean first
+  const srcText = cleanText(rawSrc);
+  const tgtText = cleanText(rawTgt);
+
+  // Validate — both sides must pass
+  const srcV = validateScript(srcText, srcLang);
+  const tgtV = validateScript(tgtText, tgtLang);
+
+  let hasError = false;
+  if (!srcV.valid) { showVal('src', srcV.message, true); hasError = true; }
+  else             { showVal('src', 'Looks good!', false); }
+  if (!tgtV.valid) { showVal('tgt', tgtV.message, true); hasError = true; }
+  else             { showVal('tgt', 'Looks good!', false); }
+
+  if (hasError) {
+    showToast("Please fix the errors before saving.", "error");
+    return;
+  }
+
+  // Check API URL is configured
+  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") {
+    showToast("Please set your Google Apps Script URL in the HTML file.", "error");
+    return;
+  }
+
+  showLoading("Saving to Google Sheets...");
+  const result = await api("add", { sourceLang: srcLang, targetLang: tgtLang, sourceText: srcText, targetText: tgtText });
+  hideLoading();
+
+  if (result.ok) {
+    showToast("Entry saved successfully!", "success");
+    clearAll();
+    await refreshData();
+  } else {
+    showToast("Save failed: " + (result.error || "Unknown error"), "error");
+  }
+}
+
+/* ── LOAD all data ────────────────────────────────────────── */
+async function refreshData() {
+  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") return;
+  const result = await api("getAll");
+  if (result.ok) {
+    allEntries = result.entries || [];
+    updateSidebarStats();
+    renderTable();
+    renderReviewQueue();
+  }
+  const statsResult = await api("getStats");
+  if (statsResult.ok) renderDashboard(statsResult.stats);
+}
+
+/* ── Sidebar stat counters ────────────────────────────────── */
+function updateSidebarStats() {
+  const total    = allEntries.length;
+  const approved = allEntries.filter(e => e.Status === 'Approved').length;
+  const pending  = allEntries.filter(e => e.Status === 'Pending').length;
+  document.getElementById('sideTotal').textContent    = total;
+  document.getElementById('sideApproved').textContent = approved;
+  document.getElementById('sidePending').textContent  = pending;
+
+  const pb = document.getElementById('pendingBadge');
+  if (pending > 0) { pb.textContent = pending; pb.style.display = 'inline'; }
+  else               pb.style.display = 'none';
+}
+
+/* ── DASHBOARD rendering ──────────────────────────────────── */
+function renderDashboard(stats) {
+  document.getElementById('dTotal').textContent    = stats.total;
+  document.getElementById('dApproved').textContent = stats.statuses.Approved || 0;
+  document.getElementById('dPending').textContent  = stats.statuses.Pending  || 0;
+  document.getElementById('dRejected').textContent = stats.statuses.Rejected || 0;
+
+  // Pair chart — horizontal bar
+  const pairLabels = Object.keys(stats.pairs);
+  const pairData   = Object.values(stats.pairs);
+
+  if (pairChartInst) pairChartInst.destroy();
+  pairChartInst = new Chart(document.getElementById('pairChart'), {
+    type: 'bar',
+    data: {
+      labels: pairLabels,
+      datasets: [{ data: pairData, backgroundColor: '#c84b2f', borderRadius: 5, label: 'Entries' }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  // Status doughnut
+  if (statusChartInst) statusChartInst.destroy();
+  statusChartInst = new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending','Approved','Rejected'],
+      datasets: [{
+        data: [stats.statuses.Pending||0, stats.statuses.Approved||0, stats.statuses.Rejected||0],
+        backgroundColor: ['#f2994a','#27ae60','#e74c3c'],
+        borderWidth: 0, hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      cutout: '65%'
+    }
+  });
+
+  renderFilteredChart();
+}
+
+function renderFilteredChart() {
+  const srcFilter = document.getElementById('dashFilterSrc')?.value || '';
+  const tgtFilter = document.getElementById('dashFilterTgt')?.value || '';
+
+  const filtered = allEntries.filter(e =>
+    (!srcFilter || e.SourceLang === srcFilter) &&
+    (!tgtFilter || e.TargetLang === tgtFilter)
+  );
+
+  // Count per pair in filtered set
+  const pairCounts = {};
+  filtered.forEach(e => {
+    const k = e.SourceLang + '→' + e.TargetLang;
+    pairCounts[k] = (pairCounts[k] || 0) + 1;
+  });
+
+  if (filteredChartInst) filteredChartInst.destroy();
+  filteredChartInst = new Chart(document.getElementById('filteredChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(pairCounts),
+      datasets: [{ data: Object.values(pairCounts), backgroundColor: '#1a5fa8', borderRadius: 5, label: 'Entries' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+}
+
+/* ── DATA TABLE rendering ─────────────────────────────────── */
+function renderTable() {
+  const search  = (document.getElementById('searchBox')?.value  || '').toLowerCase();
+  const srcF    = document.getElementById('filterSrc')?.value   || '';
+  const tgtF    = document.getElementById('filterTgt')?.value   || '';
+  const statusF = document.getElementById('filterStatus')?.value|| '';
+
+  const filtered = allEntries.filter(e => {
+    const matchSrc    = !srcF    || e.SourceLang === srcF;
+    const matchTgt    = !tgtF    || e.TargetLang === tgtF;
+    const matchStatus = !statusF || e.Status === statusF;
+    const matchSearch = !search  ||
+      (e.SourceText||'').toLowerCase().includes(search) ||
+      (e.TargetText||'').toLowerCase().includes(search) ||
+      (e.SourceLang||'').toLowerCase().includes(search) ||
+      (e.TargetLang||'').toLowerCase().includes(search);
+    return matchSrc && matchTgt && matchStatus && matchSearch;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('tableEmpty');
+  const cnt   = document.getElementById('tableCount');
+
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    cnt.textContent = '';
+    return;
+  }
+  empty.style.display = 'none';
+  cnt.textContent = `Showing ${filtered.length} of ${allEntries.length} entries`;
+
+  tbody.innerHTML = filtered.map((e, i) => `
+    <tr>
+      <td style="color:var(--ink4);font-size:12px">${i+1}</td>
+      <td><span class="badge" style="background:var(--accentbg);color:var(--accent)">${e.SourceLang||''}</span></td>
+      <td><span class="badge" style="background:var(--bluebg);color:var(--blue)">${e.TargetLang||''}</span></td>
+      <td class="text-cell" title="${escHtml(e.SourceText||'')}">${escHtml((e.SourceText||'').substring(0,60))}${(e.SourceText||'').length>60?'…':''}</td>
+      <td class="text-cell" title="${escHtml(e.TargetText||'')}">${escHtml((e.TargetText||'').substring(0,60))}${(e.TargetText||'').length>60?'…':''}</td>
+      <td><span class="badge badge-${(e.Status||'pending').toLowerCase()}">${e.Status||'Pending'}</span></td>
+      <td style="color:var(--ink4);font-size:12px;white-space:nowrap">${formatDate(e.Timestamp)}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <button class="icon-btn edit" title="Edit" onclick="openEdit('${e.ID}')"><i class="ti ti-pencil"></i></button>
+          <button class="icon-btn del"  title="Delete" onclick="deleteEntry('${e.ID}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ── REVIEW QUEUE rendering ───────────────────────────────── */
+function renderReviewQueue() {
+  const pending = allEntries.filter(e => e.Status === 'Pending');
+  const list    = document.getElementById('reviewList');
+  const empty   = document.getElementById('reviewEmpty');
+
+  if (!pending.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = pending.map(e => `
+    <div class="review-card">
+      <div class="review-card-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge" style="background:var(--accentbg);color:var(--accent)">${e.SourceLang}</span>
+          <i class="ti ti-arrow-right" style="color:var(--ink4)"></i>
+          <span class="badge" style="background:var(--bluebg);color:var(--blue)">${e.TargetLang}</span>
+          <span class="badge badge-pending">Pending</span>
+        </div>
+        <span style="font-size:12px;color:var(--ink4)">${formatDate(e.Timestamp)}</span>
+      </div>
+      <div class="review-pair">
+        <div class="review-text-box">
+          <div class="lang-tag">${e.SourceLang}</div>
+          ${escHtml(e.SourceText||'')}
+        </div>
+        <div class="review-text-box">
+          <div class="lang-tag">${e.TargetLang}</div>
+          ${escHtml(e.TargetText||'')}
+        </div>
+      </div>
+      <div class="review-actions">
+        <button class="btn btn-danger btn-sm" onclick="reviewEntry('${e.ID}','Rejected')">
+          <i class="ti ti-x"></i> Reject
+        </button>
+        <button class="btn btn-success btn-sm" onclick="reviewEntry('${e.ID}','Approved')">
+          <i class="ti ti-check"></i> Approve
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ── EDIT modal ───────────────────────────────────────────── */
+function openEdit(id) {
+  const e = allEntries.find(x => x.ID === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('editSrcBadge').textContent = e.SourceLang;
+  document.getElementById('editTgtBadge').textContent = e.TargetLang;
+  document.getElementById('editSrcText').value = e.SourceText || '';
+  document.getElementById('editTgtText').value = e.TargetText || '';
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveEdit() {
+  const e       = allEntries.find(x => x.ID === editingId);
+  const rawSrc  = document.getElementById('editSrcText').value;
+  const rawTgt  = document.getElementById('editTgtText').value;
+  const srcText = cleanText(rawSrc);
+  const tgtText = cleanText(rawTgt);
+
+  const srcV = validateScript(srcText, e.SourceLang);
+  const tgtV = validateScript(tgtText, e.TargetLang);
+  let hasErr = false;
+
+  const sv = document.getElementById('editSrcVal');
+  const tv = document.getElementById('editTgtVal');
+
+  if (!srcV.valid) { sv.className='validation-msg error'; sv.innerHTML=`<i class="ti ti-alert-circle"></i> ${srcV.message}`; hasErr=true; }
+  else               sv.className='validation-msg';
+  if (!tgtV.valid) { tv.className='validation-msg error'; tv.innerHTML=`<i class="ti ti-alert-circle"></i> ${tgtV.message}`; hasErr=true; }
+  else               tv.className='validation-msg';
+
+  if (hasErr) return;
+
+  showLoading("Updating entry...");
+  const result = await api("update", { id: editingId, sourceText: srcText, targetText: tgtText });
+  hideLoading();
+
+  if (result.ok) {
+    showToast("Entry updated!", "success");
+    closeModal();
+    await refreshData();
+  } else {
+    showToast("Update failed: " + (result.error||"Unknown"), "error");
+  }
+}
+
+/* ── DELETE ───────────────────────────────────────────────── */
+async function deleteEntry(id) {
+  if (!confirm("Delete this entry? This cannot be undone.")) return;
+  showLoading("Deleting...");
+  const result = await api("delete", { id });
+  hideLoading();
+  if (result.ok) { showToast("Entry deleted.", "info"); await refreshData(); }
+  else showToast("Delete failed: " + (result.error||""), "error");
+}
+
+/* ── REVIEW (approve/reject) ──────────────────────────────── */
+async function reviewEntry(id, status) {
+  showLoading(status + "ing entry...");
+  const result = await api("review", { id, status });
+  hideLoading();
+  if (result.ok) {
+    showToast("Marked as " + status + ".", "success");
+    await refreshData();
+  } else {
+    showToast("Failed: " + (result.error||""), "error");
+  }
+}
+
+/* ── CSV download ─────────────────────────────────────────── */
+function downloadCSV() {
+  if (API_URL === "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec") {
+    showToast("Configure the API URL first.", "error"); return;
+  }
+  // Open the export URL in a new tab — browser will download it
+  window.open(API_URL + "?action=exportCSV", "_blank");
+}
+
+/* ── Page navigation ──────────────────────────────────────── */
+const PAGE_TITLES = {
+  collect:   { title: "Collect Data",    desc: "Add a new English ↔ Indian language translation pair" },
+  dashboard: { title: "Dashboard",       desc: "Overview of collected translation data" },
+  data:      { title: "Browse Data",     desc: "Search, filter, edit and delete all entries" },
+  review:    { title: "Review Queue",    desc: "Approve or reject pending translation entries" },
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelector(`[data-page="${name}"]`).classList.add('active');
+  document.getElementById('pageTitle').textContent = PAGE_TITLES[name].title;
+  document.getElementById('pageDesc').textContent  = PAGE_TITLES[name].desc;
+
+  // Refresh charts when visiting dashboard
+  if (name === 'dashboard') refreshData();
+}
+
+/* ── Utility: format ISO date ─────────────────────────────── */
+function formatDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+  } catch { return iso; }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Toast ────────────────────────────────────────────────── */
+function showToast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<i class="ti ti-${type==='success'?'circle-check':type==='error'?'alert-circle':'info-circle'}"></i> ${msg}`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+/* ── Loading overlay ──────────────────────────────────────── */
+function showLoading(msg='Loading...') {
+  document.getElementById('loadingMsg').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+
+/* ── Init ─────────────────────────────────────────────────── */
+function init() {
+  // Build all language dropdowns
+  buildLangOptions(document.getElementById('srcLang'));
+  buildLangOptions(document.getElementById('tgtLang'));
+  buildFilterOptions(document.getElementById('filterSrc'),    'All source langs');
+  buildFilterOptions(document.getElementById('filterTgt'),    'All target langs');
+  buildFilterOptions(document.getElementById('dashFilterSrc'),'All source languages');
+  buildFilterOptions(document.getElementById('dashFilterTgt'),'All target languages');
+
+  // Close modal on backdrop click
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Load data
+  refreshData();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
