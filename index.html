@@ -905,7 +905,7 @@ async function saveEntry() {
   }
 
   // Check API URL is configured
-  if (API_URL === "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec") {
+  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") {
     showToast("Please set your Google Apps Script URL in the HTML file.", "error");
     return;
   }
@@ -925,7 +925,7 @@ async function saveEntry() {
 
 /* ── LOAD all data ────────────────────────────────────────── */
 async function refreshData() {
-  if (API_URL === "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec") return;
+  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") return;
   const result = await api("getAll");
   if (result.ok) {
     allEntries = result.entries || [];
@@ -1203,7 +1203,7 @@ async function reviewEntry(id, status) {
 
 /* ── CSV download ─────────────────────────────────────────── */
 function downloadCSV() {
-  if (API_URL === "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec") {
+  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") {
     showToast("Configure the API URL first.", "error"); return;
   }
   // Open the export URL in a new tab — browser will download it
