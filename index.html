@@ -7,13 +7,19 @@
 
 <!--
   ════════════════════════════════════════════════════════════════
-  SETUP — only one thing you need to change:
-  1. Paste your Google Apps Script Web App URL below.
+  SETUP — set your Supabase credentials below.
   ════════════════════════════════════════════════════════════════
 -->
 <script>
-  const API_URL = "https://script.google.com/macros/s/AKfycbxy0c-32xOTkr6nsddhAfOMEVXyLJisUX5mGgx9IIWEJpKqfHv141dktQUJ9P4qqx2x/exec";
-  // Example: "https://script.google.com/macros/s/AKfycby.../exec"
+  const SUPABASE_URL = "https://meobcfppkxcyumbdxpan.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lb2JjZnBwa3hjeXVtYmR4cGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNDczNDUsImV4cCI6MjA5NDgyMzM0NX0.6CXs4UzGLtHqgM6qC-tXa_phzybsEBBVSMxTfrTBcys";
+  const SB_HEADERS = {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Prefer": "return=representation"
+  };
+  const TABLE = SUPABASE_URL + "/rest/v1/translations";
 </script>
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
@@ -693,28 +699,94 @@ function buildFilterOptions(selectEl, placeholder) {
   });
 }
 
-/* ── API helper — sends request to Apps Script ────────────── */
-async function api(action, body={}) {
-  /*
-   * Google Apps Script Web Apps don't support CORS for POST with
-   * JSON body in all browsers, so we use no-cors fetch for writes
-   * and a URL param trick for reads. For reliability, we always
-   * send action as a URL parameter AND in the body.
-   */
-  const url = API_URL + "?action=" + action;
+
+/* ── Supabase API helpers ───────────────────────────────── */
+
+function generateId() {
+  return "T" + Date.now() + Math.floor(Math.random() * 1000);
+}
+
+async function sbAdd({ sourceLang, targetLang, sourceText, targetText, status }) {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(TABLE, {
       method: "POST",
-      headers: { "Content-Type":"text/plain" }, // avoids CORS preflight
-      body: JSON.stringify({ action, ...body }),
+      headers: SB_HEADERS,
+      body: JSON.stringify({
+        id: generateId(),
+        source_lang: sourceLang,
+        target_lang: targetLang,
+        source_text: sourceText,
+        target_text: targetText,
+        status: status || "Pending"
+      })
     });
-    const text = await res.text();
-    return JSON.parse(text);
-  } catch(err) {
-    // If CORS blocks JSON parse, treat as success for write ops
-    console.warn("API fetch note:", err.message);
-    return { ok: true, _note: "Response blocked by CORS but request likely sent" };
-  }
+    if (!res.ok) { const e = await res.json(); return { ok: false, error: e.message }; }
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+async function sbGetAll() {
+  try {
+    const res = await fetch(TABLE + "?order=created_at.desc", { headers: SB_HEADERS });
+    if (!res.ok) { const e = await res.json(); return { ok: false, error: e.message }; }
+    const rows = await res.json();
+    const entries = rows.map(r => ({
+      ID: r.id,
+      Timestamp: r.created_at,
+      SourceLang: r.source_lang,
+      TargetLang: r.target_lang,
+      SourceText: r.source_text,
+      TargetText: r.target_text,
+      Status: r.status,
+      EditedAt: r.edited_at
+    }));
+    return { ok: true, entries };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+async function sbUpdate({ id, sourceText, targetText }) {
+  try {
+    const res = await fetch(TABLE + "?id=eq." + id, {
+      method: "PATCH",
+      headers: SB_HEADERS,
+      body: JSON.stringify({ source_text: sourceText, target_text: targetText, edited_at: new Date().toISOString() })
+    });
+    if (!res.ok) { const e = await res.json(); return { ok: false, error: e.message }; }
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+async function sbDelete({ id }) {
+  try {
+    const res = await fetch(TABLE + "?id=eq." + id, { method: "DELETE", headers: SB_HEADERS });
+    if (!res.ok) { const e = await res.json(); return { ok: false, error: e.message }; }
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+async function sbReview({ id, status }) {
+  try {
+    const res = await fetch(TABLE + "?id=eq." + id, {
+      method: "PATCH",
+      headers: SB_HEADERS,
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) { const e = await res.json(); return { ok: false, error: e.message }; }
+    return { ok: true };
+  } catch(e) { return { ok: false, error: e.message }; }
+}
+
+/* ── CSV download ───────────────────────────────────────────────── */
+function downloadCSV() {
+  if (!allEntries.length) { showToast("No data to export.", "error"); return; }
+  const keys = ["ID","Timestamp","SourceLang","TargetLang","SourceText","TargetText","Status","EditedAt"];
+  const rows = allEntries.map(e => keys.map(h => '"' + String(e[h]||'').replace(/"/g,'""') + '"').join(","));
+  const csv = [keys.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "bhashasetu_translations.csv";
+  a.click();
 }
 
 /* ── Data cleaning ────────────────────────────────────────── */
@@ -915,9 +987,9 @@ async function saveEntry() {
     return;
   }
 
-  // Check API URL is configured
-  if (!API_URL) {
-    showToast("Please set your Google Apps Script URL in the HTML file.", "error");
+  // Check Supabase is configured
+  if (!SUPABASE_URL) {
+    showToast("Please set your Supabase credentials.", "error");
     return;
   }
 
@@ -926,8 +998,8 @@ async function saveEntry() {
   const hasSoftError = srcSoft || tgtSoft;
   const status = hasSoftError ? "Pending" : "Approved";
 
-  showLoading(hasSoftError ? "Sending for review..." : "Saving to Google Sheets...");
-  const result = await api("add", { sourceLang: srcLang, targetLang: tgtLang, sourceText: srcText, targetText: tgtText, status });
+  showLoading(hasSoftError ? "Sending for review..." : "Saving to Supabase...");
+  const result = await sbAdd({ sourceLang: srcLang, targetLang: tgtLang, sourceText: srcText, targetText: tgtText, status });
   hideLoading();
 
   if (result.ok) {
@@ -945,16 +1017,26 @@ async function saveEntry() {
 
 /* ── LOAD all data ────────────────────────────────────────── */
 async function refreshData() {
-  if (!API_URL) return;
-  const result = await api("getAll");
+  if (!SUPABASE_URL) return;
+  const result = await sbGetAll();
   if (result.ok) {
     allEntries = result.entries || [];
     updateSidebarStats();
     renderTable();
     renderReviewQueue();
+    buildStatsFromEntries();
   }
-  const statsResult = await api("getStats");
-  if (statsResult.ok) renderDashboard(statsResult.stats);
+}
+
+function buildStatsFromEntries() {
+  const pairs = {};
+  const statuses = { Pending: 0, Approved: 0, Rejected: 0 };
+  allEntries.forEach(e => {
+    const key = e.SourceLang + "→" + e.TargetLang;
+    pairs[key] = (pairs[key] || 0) + 1;
+    if (statuses[e.Status] !== undefined) statuses[e.Status]++;
+  });
+  renderDashboard({ pairs, statuses, total: allEntries.length });
 }
 
 /* ── Sidebar stat counters ────────────────────────────────── */
@@ -1186,7 +1268,7 @@ async function saveEdit() {
   if (hasErr) return;
 
   showLoading("Updating entry...");
-  const result = await api("update", { id: editingId, sourceText: srcText, targetText: tgtText });
+  const result = await sbUpdate({ id: editingId, sourceText: srcText, targetText: tgtText });
   hideLoading();
 
   if (result.ok) {
@@ -1202,7 +1284,7 @@ async function saveEdit() {
 async function deleteEntry(id) {
   if (!confirm("Delete this entry? This cannot be undone.")) return;
   showLoading("Deleting...");
-  const result = await api("delete", { id });
+  const result = await sbDelete({ id });
   hideLoading();
   if (result.ok) { showToast("Entry deleted.", "info"); await refreshData(); }
   else showToast("Delete failed: " + (result.error||""), "error");
@@ -1211,7 +1293,7 @@ async function deleteEntry(id) {
 /* ── REVIEW (approve/reject) ──────────────────────────────── */
 async function reviewEntry(id, status) {
   showLoading(status + "ing entry...");
-  const result = await api("review", { id, status });
+  const result = await sbReview({ id, status });
   hideLoading();
   if (result.ok) {
     showToast("Marked as " + status + ".", "success");
@@ -1222,13 +1304,7 @@ async function reviewEntry(id, status) {
 }
 
 /* ── CSV download ─────────────────────────────────────────── */
-function downloadCSV() {
-  if (!API_URL) {
-    showToast("Configure the API URL first.", "error"); return;
-  }
-  // Open the export URL in a new tab — browser will download it
-  window.open(API_URL + "?action=exportCSV", "_blank");
-}
+
 
 /* ── Page navigation ──────────────────────────────────────── */
 const PAGE_TITLES = {
