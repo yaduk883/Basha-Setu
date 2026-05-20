@@ -393,6 +393,63 @@ textarea::placeholder{color:var(--ink4)}
   .trans-grid,.charts-grid,.review-pair,.modal-grid{grid-template-columns:1fr}
   .content{padding:20px}
 }
+
+/* ── Pagination ──────────────────────────────────────────── */
+.pagination{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.page-btn{
+  min-width:32px;height:32px;padding:0 8px;
+  border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  background:#fff;color:var(--ink2);font-size:13px;font-family:var(--sans);
+  cursor:pointer;transition:all .18s;
+}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── Error state ─────────────────────────────────────────── */
+.error-state{
+  text-align:center;padding:48px 20px;color:var(--ink3);
+}
+.error-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.5;color:var(--red)}
+.error-state p{font-size:14px;margin-bottom:16px}
+
+/* ── Dark mode ───────────────────────────────────────────── */
+body.dark{
+  --ink:#f0ede6;
+  --ink2:#c8c4bb;
+  --ink3:#8a8680;
+  --ink4:#5a5650;
+  --paper:#141210;
+  --paper2:#1e1b18;
+  --paper3:#2a2620;
+  --accentbg:#2a1a14;
+  --greenbg:#0e2018;
+  --amberbg:#1e1600;
+  --redbg:#200e0e;
+  --bluebg:#0e1624;
+}
+body.dark .sidebar{background:#0a0908}
+body.dark .topbar{background:var(--paper);border-color:var(--paper3)}
+body.dark .card{background:var(--paper2);border-color:var(--paper3)}
+body.dark textarea,
+body.dark select,
+body.dark .search-box{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
+body.dark .btn-secondary{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
+body.dark .btn-secondary:hover{border-color:var(--ink3)}
+body.dark .modal{background:var(--paper2)}
+body.dark .data-table th{background:var(--paper2);color:var(--ink3)}
+body.dark .data-table td{border-color:var(--paper3);color:var(--ink2)}
+body.dark .data-table tr:hover td{background:var(--paper3)}
+body.dark .review-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .review-text-box{background:var(--paper);border-color:var(--paper3)}
+body.dark .chart-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .stat-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .icon-btn{background:var(--paper2);border-color:var(--paper3);color:var(--ink3)}
+body.dark .page-btn{background:var(--paper2);color:var(--ink2);border-color:var(--paper3)}
+body.dark .page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+body.dark .paste-btn,body.dark .clear-btn{background:var(--paper2);color:var(--ink3);border-color:var(--paper3)}
+body.dark .loading{background:rgba(20,18,16,0.85)}
+body.dark .filter-select{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
 </style>
 </head>
 <body>
@@ -400,7 +457,7 @@ textarea::placeholder{color:var(--ink4)}
 <!-- Loading Overlay -->
 <div class="loading" id="loading">
   <div class="spinner"></div>
-  <p id="loadingMsg">Saving to Google Sheets...</p>
+  <p id="loadingMsg">Loading...</p>
 </div>
 
 <!-- Toast Container -->
