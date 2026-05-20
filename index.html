@@ -782,7 +782,7 @@ function downloadCSV() {
   const keys = ["ID","Timestamp","SourceLang","TargetLang","SourceText","TargetText","Status","EditedAt"];
   const rows = allEntries.map(e => keys.map(h => '"' + String(e[h]||'').replace(/"/g,'""') + '"').join(","));
   const csv = [keys.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "bhashasetu_translations.csv";
