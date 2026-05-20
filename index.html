@@ -16,6 +16,7 @@
   // Example: "https://script.google.com/macros/s/AKfycby.../exec"
 </script>
 
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -660,12 +661,11 @@ const LANGUAGES = [
   { code:"Punjabi",   label:"Punjabi",    flag:"🇮🇳", script:/[\u0A00-\u0A7F]/ },
   { code:"Odia",      label:"Odia",       flag:"🇮🇳", script:/[\u0B00-\u0B7F]/ },
   { code:"Urdu",      label:"Urdu",       flag:"🇮🇳", script:/[\u0600-\u06FF]/ },
-  { code:"Bodo",      label:"Bodo",       flag:"🇮🇳", SCRIPT:/[\\u0900-\u097F]/},
 ];
 
 // Note: Hindi and Marathi share Devanagari script.
 // Validation allows either when both are Devanagari languages.
-const DEVANAGARI_LANGS = new Set(["Hindi","Marathi","Bodo"]);
+const DEVANAGARI_LANGS = new Set(["Hindi","Marathi"]);
 
 /* ── App state ────────────────────────────────────────────── */
 let allEntries = [];     // All data from Google Sheets
@@ -890,33 +890,52 @@ async function saveEntry() {
   const srcText = cleanText(rawSrc);
   const tgtText = cleanText(rawTgt);
 
-  // Validate — both sides must pass
+  // Validate both sides
   const srcV = validateScript(srcText, srcLang);
   const tgtV = validateScript(tgtText, tgtLang);
 
-  let hasError = false;
-  if (!srcV.valid) { showVal('src', srcV.message, true); hasError = true; }
+  const ENGLISH_SCRIPT_ERROR = "English column should contain only Latin/English characters.";
+
+  // Determine which errors are "soft" (English script only) vs "hard" (blocking)
+  const srcSoft = !srcV.valid && srcV.message === ENGLISH_SCRIPT_ERROR;
+  const tgtSoft = !tgtV.valid && tgtV.message === ENGLISH_SCRIPT_ERROR;
+
+  const srcHard = !srcV.valid && !srcSoft;
+  const tgtHard = !tgtV.valid && !tgtSoft;
+
+  // Show validation messages
+  if (!srcV.valid) { showVal('src', srcV.message, true); }
   else             { showVal('src', 'Looks good!', false); }
-  if (!tgtV.valid) { showVal('tgt', tgtV.message, true); hasError = true; }
+  if (!tgtV.valid) { showVal('tgt', tgtV.message, true); }
   else             { showVal('tgt', 'Looks good!', false); }
 
-  if (hasError) {
+  // Hard errors (empty text, wrong Indian script, etc.) → block completely
+  if (srcHard || tgtHard) {
     showToast("Please fix the errors before saving.", "error");
     return;
   }
 
   // Check API URL is configured
-  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") {
+  if (!API_URL) {
     showToast("Please set your Google Apps Script URL in the HTML file.", "error");
     return;
   }
 
-  showLoading("Saving to Google Sheets...");
-  const result = await api("add", { sourceLang: srcLang, targetLang: tgtLang, sourceText: srcText, targetText: tgtText });
+  // If any soft (English script) error exists → send for review (Pending)
+  // Otherwise → save directly as Approved
+  const hasSoftError = srcSoft || tgtSoft;
+  const status = hasSoftError ? "Pending" : "Approved";
+
+  showLoading(hasSoftError ? "Sending for review..." : "Saving to Google Sheets...");
+  const result = await api("add", { sourceLang: srcLang, targetLang: tgtLang, sourceText: srcText, targetText: tgtText, status });
   hideLoading();
 
   if (result.ok) {
-    showToast("Entry saved successfully!", "success");
+    if (hasSoftError) {
+      showToast("Entry sent for review — it will be checked before approval.", "info");
+    } else {
+      showToast("Entry saved successfully!", "success");
+    }
     clearAll();
     await refreshData();
   } else {
@@ -926,7 +945,7 @@ async function saveEntry() {
 
 /* ── LOAD all data ────────────────────────────────────────── */
 async function refreshData() {
-  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") return;
+  if (!API_URL) return;
   const result = await api("getAll");
   if (result.ok) {
     allEntries = result.entries || [];
@@ -1204,7 +1223,7 @@ async function reviewEntry(id, status) {
 
 /* ── CSV download ─────────────────────────────────────────── */
 function downloadCSV() {
-  if (API_URL === "PASTE_YOUR_WEB_APP_URL_HERE") {
+  if (!API_URL) {
     showToast("Configure the API URL first.", "error"); return;
   }
   // Open the export URL in a new tab — browser will download it
