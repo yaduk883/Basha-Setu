@@ -662,18 +662,19 @@ const LANGUAGES = [
   { code:"Kannada",   label:"Kannada",    flag:"🇮🇳", script:/[\u0C80-\u0CFF]/ },
   { code:"Malayalam", label:"Malayalam",  flag:"🇮🇳", script:/[\u0D00-\u0D7F]/ },
   { code:"Bengali",   label:"Bengali",    flag:"🇮🇳", script:/[\u0980-\u09FF]/ },
+  { code:"Assamese",  label:"Assamese",   flag:"🇮🇳", script:/[\u0980-\u09FF]/ }, // Bengali script block (same as Bengali)
   { code:"Marathi",   label:"Marathi",    flag:"🇮🇳", script:/[\u0900-\u097F]/ }, // Devanagari (same as Hindi)
   { code:"Gujarati",  label:"Gujarati",   flag:"🇮🇳", script:/[\u0A80-\u0AFF]/ },
   { code:"Punjabi",   label:"Punjabi",    flag:"🇮🇳", script:/[\u0A00-\u0A7F]/ },
   { code:"Odia",      label:"Odia",       flag:"🇮🇳", script:/[\u0B00-\u0B7F]/ },
   { code:"Urdu",      label:"Urdu",       flag:"🇮🇳", script:/[\u0600-\u06FF]/ },
-  { code:"Assamese",  label:"Assamese",   flag:"🇮🇳", script:/[\u0600-\u06FF]/ },
   { code:"Bodo",      label:"Bodo",       flag:"🇮🇳", script:/[\u0900-\u097F]/ },
 ];
 
 // Note: Hindi and Marathi share Devanagari script.
 // Validation allows either when both are Devanagari languages.
-const DEVANAGARI_LANGS = new Set(["Hindi","Marathi"]);
+const DEVANAGARI_LANGS = new Set(["Hindi","Marathi","Bodo"]);
+const BENGALI_LANGS    = new Set(["Bengali","Assamese"]);
 
 /* ── App state ────────────────────────────────────────────── */
 let allEntries = [];     // All data from Google Sheets
@@ -830,8 +831,17 @@ function validateScript(text, langCode) {
   if (!lang) return { valid: true }; // unknown lang, skip
 
   if (langCode === "English") {
-    // Allow only ASCII printable + whitespace + common punctuation
-    const hasNonLatin = /[^\u0000-\u00FF]/.test(text);
+    // Strip common typographic characters that are valid in English
+    // before checking: curly quotes, smart apostrophes, dashes, ellipsis etc.
+    const stripped = text
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")  // curly single quotes / apostrophes
+      .replace(/[\u201C\u201D\u201E\u201F]/g, '"')  // curly double quotes
+      .replace(/[\u2013\u2014\u2015]/g, '-')          // en-dash, em-dash, horizontal bar
+      .replace(/\u2026/g, '...')                        // ellipsis
+      .replace(/[\u00A0\u202F\u2009]/g, ' ')          // non-breaking / narrow spaces
+      .replace(/[\u2032\u2033]/g, "'");                // prime symbols (feet/inches)
+
+    const hasNonLatin = /[^\u0000-\u00FF]/.test(stripped);
     if (hasNonLatin) return { valid: false, message: "English column should contain only Latin/English characters." };
     return { valid: true };
   }
@@ -854,6 +864,13 @@ function validateScript(text, langCode) {
       let devMatch = 0;
       for (const ch of chars) { if (devScript.test(ch)) devMatch++; }
       if (devMatch / chars.length >= 0.3) return { valid: true };
+    }
+    // Special case: Bengali/Assamese share the Bengali script block
+    if (BENGALI_LANGS.has(langCode)) {
+      const bengScript = /[\u0980-\u09FF]/;
+      let bengMatch = 0;
+      for (const ch of chars) { if (bengScript.test(ch)) bengMatch++; }
+      if (bengMatch / chars.length >= 0.3) return { valid: true };
     }
     return {
       valid: false,
