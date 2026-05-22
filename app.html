@@ -6,10 +6,8 @@
 <title>BhashaSetu — Translation Data Collector</title>
 
 <script>
-  // Injected via GitHub Actions environment variables safely
   const SUPABASE_URL = "https://meobcfppkxcyumbdxpan.supabase.co";
-  const SUPABASE_KEY = "sb_publishable_b4-RefLHnEm0XOLcMIO9Pg_dmzzVLwN";
-  
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lb2JjZnBwa3hjeXVtYmR4cGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNDczNDUsImV4cCI6MjA5NDgyMzM0NX0.6CXs4UzGLtHqgM6qC-tXa_phzybsEBBVSMxTfrTBcys";
   const SB_HEADERS = {
     "Content-Type": "application/json",
     "apikey": SUPABASE_KEY,
@@ -18,7 +16,11 @@
   };
   const TABLE = SUPABASE_URL + "/rest/v1/translations";
 
-  const ADMIN_PASSWORD = "__ADMIN_PASSWORD__";
+  /* ── ADMIN CONFIG ─────────────────────────────────────────
+     Change ADMIN_PASSWORD to whatever you want.
+     ADMIN_STORAGE_KEY is just the localStorage key name.
+  ─────────────────────────────────────────────────────────── */
+  const ADMIN_PASSWORD    = "bhashasetu2024";
   const ADMIN_STORAGE_KEY = "bhashasetu_admin";
 </script>
 
@@ -499,7 +501,9 @@ textarea::placeholder{color:var(--ink4)}
             <span style="color:var(--ink3)">→</span>
             <select class="filter-select" id="dashFilterTgt" onchange="renderFilteredChart()"><option value="">All target languages</option></select>
           </div>
+          <div class="chart-wrap" style="height:200px;margin-top:16px"><canvas id="filteredChart"></canvas></div>
         </div>
+      </div>
 
       <!-- DATA (admin only) -->
       <div class="page" id="page-data">
