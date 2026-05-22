@@ -11,7 +11,7 @@
   const AUTH_URL = SUPABASE_URL + "/auth/v1";
   const TABLE = SUPABASE_URL + "/rest/v1/translations";
   const SB_HEADERS = () => getAuthHeaders();
-  const SUPABASE_CONFIG_OK = Boolean(SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes("https://meobcfppkxcyumbdxpan.supabase.co") && !SUPABASE_KEY.includes("sb_publishable_b4-RefLHnEm0XOLcMIO9Pg_dmzzVLwN"));
+  const SUPABASE_CONFIG_OK = Boolean(SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes("__SUPABASE_URL__") && !SUPABASE_KEY.includes("__SUPABASE_KEY__"));
 </script>
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
