@@ -6,11 +6,12 @@
 <title>BhashaSetu — Translation Data Collector</title>
 
 <script>
-  const SUPABASE_URL = "";
-  const SUPABASE_KEY = "";
+  const SUPABASE_URL = "https://meobcfppkxcyumbdxpan.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_b4-RefLHnEm0XOLcMIO9Pg_dmzzVLwN";
   const AUTH_URL = SUPABASE_URL + "/auth/v1";
   const TABLE = SUPABASE_URL + "/rest/v1/translations";
   const SB_HEADERS = () => getAuthHeaders();
+  const SUPABASE_CONFIG_OK = Boolean(SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes("https://meobcfppkxcyumbdxpan.supabase.co") && !SUPABASE_KEY.includes("sb_publishable_b4-RefLHnEm0XOLcMIO9Pg_dmzzVLwN"));
 </script>
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
@@ -511,6 +512,7 @@ function isAdmin() {
 }
 
 function getAuthHeaders() {
+  if (!SUPABASE_CONFIG_OK) return null;
   const session = JSON.parse(localStorage.getItem('bhashasetu_session') || 'null');
   return {
     "Content-Type": "application/json",
@@ -550,6 +552,13 @@ async function tryAdminLogin() {
   errEl.textContent = '';
 
   try {
+    if (!SUPABASE_CONFIG_OK) {
+    errEl.innerHTML = '<i class="ti ti-alert-circle" style="font-size:13px"></i> Supabase config missing in deployed build.';
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in <i class="ti ti-arrow-right"></i>';
+    return;
+  }
+
     const res = await fetch(AUTH_URL + "/token?grant_type=password", {
       method: "POST",
       headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
@@ -631,9 +640,11 @@ function buildFilterOptions(selectEl,placeholder){
 function generateId(){return "T"+Date.now()+Math.floor(Math.random()*1000);}
 
 async function sbAdd({sourceLang,targetLang,sourceText,targetText,status}){
+  if(!SUPABASE_CONFIG_OK)return{ok:false,error:"Supabase config is missing. Add SUPABASE_URL and SUPABASE_KEY in deployment secrets."};
   try{const res=await fetch(TABLE,{method:"POST",headers:SB_HEADERS(),body:JSON.stringify({id:generateId(),source_lang:sourceLang,target_lang:targetLang,source_text:sourceText,target_text:targetText,status:status||"Pending"})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbGetAll(){
+  if(!SUPABASE_CONFIG_OK)return{ok:false,error:"Supabase is not configured for this deployed site."};
   try{const res=await fetch(TABLE+"?order=created_at.desc",{headers:SB_HEADERS()});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}const rows=await res.json();return{ok:true,entries:rows.map(r=>({ID:r.id,Timestamp:r.created_at,SourceLang:r.source_lang,TargetLang:r.target_lang,SourceText:r.source_text,TargetText:r.target_text,Status:r.status,EditedAt:r.edited_at}))};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbUpdate({id,sourceText,targetText}){
@@ -721,7 +732,13 @@ async function saveEntry(){
 
 /* ── Data loading ────────────────────────────────────────── */
 async function refreshData(){
-  if(!SUPABASE_URL)return;
+  if(!SUPABASE_CONFIG_OK){
+    const msg="Supabase config missing in deployed build. Inject SUPABASE_URL and SUPABASE_KEY via GitHub Actions secrets before publish.";
+    const tableErr=document.getElementById('tableError');
+    if(tableErr){tableErr.style.display='block';document.getElementById('tableErrorMsg').textContent=msg;}
+    showToast("Supabase config missing. Open README setup step 3.","error");
+    return;
+  }
   const tableErr=document.getElementById('tableError');
   if(tableErr)tableErr.style.display='none';
   const result=await sbGetAll();
