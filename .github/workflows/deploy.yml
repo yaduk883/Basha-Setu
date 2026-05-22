@@ -13,9 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject admin password
+      - name: Inject secrets
         run: |
-          sed -i "s/__ADMIN_PASSWORD__/${{ secrets.ADMIN_PASSWORD }}/g" app.html
+          sed -i "s|__SUPABASE_URL__|${{ secrets.SUPABASE_URL }}|g" app.html
+          sed -i "s|__SUPABASE_KEY__|${{ secrets.SUPABASE_KEY }}|g" app.html
+          sed -i "s|__ADMIN_PASSWORD__|${{ secrets.ADMIN_PASSWORD }}|g" app.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
