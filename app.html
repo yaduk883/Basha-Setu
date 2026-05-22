@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BhashaSetu — Translation Data Collector</title>
+
+<script>
+  const SUPABASE_URL = "https://meobcfppkxcyumbdxpan.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lb2JjZnBwa3hjeXVtYmR4cGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyNDczNDUsImV4cCI6MjA5NDgyMzM0NX0.6CXs4UzGLtHqgM6qC-tXa_phzybsEBBVSMxTfrTBcys";
+  const SB_HEADERS = {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Prefer": "return=representation"
+  };
+  const TABLE = SUPABASE_URL + "/rest/v1/translations";
+
+  /* ── ADMIN CONFIG ─────────────────────────────────────────
+     Change ADMIN_PASSWORD to whatever you want.
+     ADMIN_STORAGE_KEY is just the localStorage key name.
+  ─────────────────────────────────────────────────────────── */
+  const ADMIN_PASSWORD    = "bhashasetu2024";
+  const ADMIN_STORAGE_KEY = "bhashasetu_admin";
+</script>
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0d0d0d;--ink2:#444;--ink3:#888;--ink4:#bbb;
+  --paper:#faf8f4;--paper2:#f0ede6;--paper3:#e8e4db;
+  --accent:#c84b2f;--accent2:#e8622a;--accentbg:#fdf0ec;
+  --green:#2a7a4b;--greenbg:#eaf4ef;
+  --amber:#b86e00;--amberbg:#fdf5e6;
+  --red:#c0392b;--redbg:#fdecea;
+  --blue:#1a5fa8;--bluebg:#eaf1fb;
+  --radius:12px;--radius-sm:7px;
+  --sans:'DM Sans',sans-serif;--serif:'Fraunces',serif;
+  --shadow:0 2px 16px rgba(0,0,0,0.07);--shadow-lg:0 8px 40px rgba(0,0,0,0.12);
+}
+
+/* ── Admin Login Overlay ─────────────────────────────────── */
+.admin-overlay{
+  position:fixed;inset:0;background:var(--paper);
+  z-index:500;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:0;
+}
+.admin-overlay.hidden{display:none}
+.admin-card{
+  background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);
+  padding:36px 40px;width:90%;max-width:380px;box-shadow:var(--shadow-lg);
+  text-align:center;
+}
+.admin-logo{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.admin-logo span{color:var(--accent2)}
+.admin-subtitle{font-size:13px;color:var(--ink3);margin-bottom:28px}
+.admin-divider{display:flex;align-items:center;gap:12px;margin:0 0 20px;color:var(--ink4);font-size:12px}
+.admin-divider::before,.admin-divider::after{content:'';flex:1;height:1px;background:var(--paper3)}
+.admin-field{text-align:left;margin-bottom:14px}
+.admin-field label{display:block;font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.admin-field input{
+  width:100%;padding:10px 14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
+  font-family:var(--sans);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;
+}
+.admin-field input:focus{border-color:var(--accent)}
+.admin-field input.err{border-color:var(--red)}
+.admin-err{font-size:12px;color:var(--red);margin-top:6px;min-height:18px;display:flex;align-items:center;gap:5px}
+.admin-btn{
+  width:100%;padding:11px;background:var(--accent);color:#fff;border:none;
+  border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;font-weight:500;
+  cursor:pointer;transition:background .2s;margin-top:4px;
+}
+.admin-btn:hover{background:var(--accent2)}
+.admin-back{
+  margin-top:16px;font-size:13px;color:var(--ink3);
+}
+.admin-back a{color:var(--accent);text-decoration:none;cursor:pointer}
+.admin-back a:hover{text-decoration:underline}
+
+/* ── Admin Badge in sidebar ──────────────────────────────── */
+.admin-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;
+  background:rgba(200,75,47,0.18);color:var(--accent2);
+  padding:2px 8px;border-radius:999px;margin-left:auto;
+}
+.admin-logout-btn{
+  display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);
+  font-size:12px;color:rgba(255,255,255,0.4);cursor:pointer;transition:all .18s;
+  background:none;border:none;width:100%;text-align:left;margin-top:2px;
+}
+.admin-logout-btn:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7)}
+.admin-login-prompt{
+  display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);
+  font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;transition:all .18s;
+  background:none;border:1px dashed rgba(255,255,255,0.12);width:100%;text-align:left;margin-top:6px;
+}
+.admin-login-prompt:hover{border-color:rgba(200,75,47,0.5);color:rgba(255,255,255,0.7)}
+
+/* ── Dark Mode ───────────────────────────────────────────── */
+body.dark{
+  --ink:#f0ede6;--ink2:#c8c4bc;--ink3:#888;--ink4:#555;
+  --paper:#141210;--paper2:#1e1b18;--paper3:#2a2620;
+  --accentbg:rgba(200,75,47,0.15);--greenbg:rgba(42,122,75,0.15);
+  --amberbg:rgba(184,110,0,0.15);--redbg:rgba(192,57,43,0.15);
+  --bluebg:rgba(26,95,168,0.15);
+  --shadow:0 2px 16px rgba(0,0,0,0.3);--shadow-lg:0 8px 40px rgba(0,0,0,0.5);
+}
+body.dark .admin-overlay{background:var(--paper)}
+body.dark .admin-card{background:#1e1e1e;border-color:#2e2e2e}
+body.dark .admin-field input{background:#1e1e1e;border-color:#2e2e2e;color:var(--ink)}
+body.dark .sidebar{background:#0a0908}
+body.dark .topbar{background:var(--paper);border-color:var(--paper3)}
+body.dark .card{background:var(--paper2);border-color:var(--paper3)}
+body.dark textarea,body.dark select,body.dark .search-box{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
+body.dark .btn-secondary{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
+body.dark .btn-secondary:hover{border-color:var(--ink3)}
+body.dark .modal{background:var(--paper2)}
+body.dark .data-table th{background:var(--paper2);color:var(--ink3)}
+body.dark .data-table td{border-color:var(--paper3);color:var(--ink2)}
+body.dark .data-table tr:hover td{background:var(--paper3)}
+body.dark .review-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .review-text-box{background:var(--paper);border-color:var(--paper3)}
+body.dark .chart-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .stat-card{background:var(--paper2);border-color:var(--paper3)}
+body.dark .icon-btn{background:var(--paper2);border-color:var(--paper3);color:var(--ink3)}
+body.dark .page-btn{background:var(--paper2);color:var(--ink2);border-color:var(--paper3)}
+body.dark .page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+body.dark .paste-btn,body.dark .clear-btn{background:var(--paper2);color:var(--ink3);border-color:var(--paper3)}
+body.dark .loading{background:rgba(20,18,16,0.85)}
+body.dark .filter-select{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
+body.dark select option{background:#1e1e1e}
+body.dark .search-box,body.dark .filter-select{background:var(--paper2);border-color:var(--paper3)}
+
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;transition:background .25s,color .25s}
+.app-shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.sidebar{background:var(--ink);color:#fff;display:flex;flex-direction:column;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-brand{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-brand .logo{font-family:var(--serif);font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px}
+.sidebar-brand .logo span{color:var(--accent2)}
+.sidebar-brand .tagline{font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px;letter-spacing:.5px}
+.nav{flex:1;padding:16px 12px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-sm);font-size:13.5px;color:rgba(255,255,255,0.6);cursor:pointer;transition:all .18s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
+.nav-item i{font-size:17px}
+.nav-item:hover{background:rgba(255,255,255,0.07);color:#fff}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-section-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.2);padding:12px 14px 4px;margin-top:4px}
+.sidebar-stats{padding:16px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto}
+.sidebar-stats .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px}
+.sidebar-stats .stat-row strong{color:rgba(255,255,255,0.9);font-size:15px;font-weight:500}
+
+/* ── Main ────────────────────────────────────────────────── */
+.main{min-height:100vh;display:flex;flex-direction:column}
+.topbar{padding:20px 32px;border-bottom:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between;background:var(--paper);position:sticky;top:0;z-index:10;}
+.topbar-title{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--ink)}
+.topbar-title small{font-family:var(--sans);font-size:12px;color:var(--ink3);font-weight:300;margin-left:8px}
+.content{padding:32px;flex:1}
+.page{display:none}
+.page.active{display:block}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
+.card-title{font-family:var(--serif);font-size:17px;font-weight:500;margin-bottom:16px;color:var(--ink)}
+
+/* ── Language Selector ───────────────────────────────────── */
+.lang-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.lang-select-wrap{flex:1;min-width:160px}
+.lang-select-wrap label{display:block;font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+select{width:100%;padding:10px 14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);background:#fff;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;transition:border-color .2s;}
+select:focus{border-color:var(--accent)}
+.swap-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--paper3);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:16px;transition:all .2s;margin-top:20px;flex-shrink:0;}
+.swap-btn:hover{border-color:var(--accent);color:var(--accent);transform:rotate(180deg)}
+
+/* ── Translation Grid ────────────────────────────────────── */
+.trans-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.trans-panel{position:relative}
+.trans-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.trans-lang-badge{font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--accentbg);color:var(--accent);}
+.trans-panel-actions{display:flex;gap:6px}
+.paste-btn,.clear-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;border:1px solid var(--paper3);background:#fff;color:var(--ink3);font-size:11px;cursor:pointer;transition:all .18s;font-family:var(--sans);}
+.paste-btn:hover{border-color:var(--accent);color:var(--accent)}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+textarea{width:100%;height:180px;padding:14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;line-height:1.7;color:var(--ink);background:#fff;resize:vertical;outline:none;transition:border-color .2s;}
+textarea:focus{border-color:var(--accent)}
+textarea.error{border-color:var(--red)}
+textarea::placeholder{color:var(--ink4)}
+.char-count{font-size:11px;color:var(--ink4);text-align:right;margin-top:4px}
+.validation-msg{font-size:12px;padding:8px 12px;border-radius:var(--radius-sm);margin-top:6px;display:none;align-items:center;gap:6px;}
+.validation-msg.error{display:flex;background:var(--redbg);color:var(--red)}
+.validation-msg.success{display:flex;background:var(--greenbg);color:var(--green)}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--radius-sm);border:none;font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:all .18s;}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{background:var(--ink4);cursor:not-allowed}
+.btn-secondary{background:#fff;color:var(--ink);border:1.5px solid var(--paper3)}
+.btn-secondary:hover{border-color:var(--ink3)}
+.btn-danger{background:var(--redbg);color:var(--red);border:1px solid #f5c6c2}
+.btn-danger:hover{background:#fad5d2}
+.btn-success{background:var(--greenbg);color:var(--green);border:1px solid #b8dfc9}
+.btn-success:hover{background:#d4edde}
+.btn-sm{padding:6px 12px;font-size:12px}
+.action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ── Toast ───────────────────────────────────────────────── */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 18px;border-radius:var(--radius-sm);font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;animation:slideUp .3s ease;box-shadow:var(--shadow-lg);max-width:340px;}
+.toast.success{background:var(--green);color:#fff}
+.toast.error{background:var(--red);color:#fff}
+.toast.info{background:var(--ink);color:#fff}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Stats ───────────────────────────────────────────────── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:18px 20px;}
+.stat-card .val{font-family:var(--serif);font-size:32px;font-weight:700;line-height:1;color:var(--ink)}
+.stat-card .lbl{font-size:12px;color:var(--ink3);margin-top:4px}
+.stat-card.accent .val{color:var(--accent)}
+.stat-card.green .val{color:var(--green)}
+.stat-card.amber .val{color:var(--amber)}
+.stat-card.red .val{color:var(--red)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.chart-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:24px}
+.chart-card h3{font-family:var(--serif);font-size:15px;font-weight:500;margin-bottom:16px;color:var(--ink)}
+.chart-wrap{position:relative;height:240px}
+
+/* ── Table ───────────────────────────────────────────────── */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{flex:1;min-width:200px;padding:9px 14px 9px 36px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;outline:none;transition:border-color .2s;}
+.search-box:focus{border-color:var(--accent)}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--ink4);font-size:16px}
+.filter-select{padding:9px 32px 9px 12px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);font-family:var(--sans);font-size:13px;color:var(--ink);background:#fff;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;}
+.data-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.data-table th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.7px;font-weight:500;color:var(--ink3);border-bottom:2px solid var(--paper3);background:#fff;white-space:nowrap;}
+.data-table td{padding:12px 14px;border-bottom:1px solid var(--paper2);vertical-align:top;color:var(--ink2);}
+.data-table tr:hover td{background:var(--paper)}
+.data-table .text-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table .text-cell:hover{white-space:normal;overflow:visible}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap;}
+.badge-pending{background:var(--amberbg);color:var(--amber)}
+.badge-approved{background:var(--greenbg);color:var(--green)}
+.badge-rejected{background:var(--redbg);color:var(--red)}
+.icon-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--paper3);background:#fff;color:var(--ink3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;transition:all .18s;}
+.icon-btn:hover.edit{border-color:var(--blue);color:var(--blue);background:var(--bluebg)}
+.icon-btn:hover.del{border-color:var(--red);color:var(--red);background:var(--redbg)}
+.icon-btn:hover.approve{border-color:var(--green);color:var(--green);background:var(--greenbg)}
+.icon-btn:hover.reject{border-color:var(--red);color:var(--red);background:var(--redbg)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink3)}
+.empty-state i{font-size:40px;margin-bottom:12px;display:block;opacity:.4}
+.empty-state p{font-size:14px}
+.pagination{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.page-btn{min-width:32px;height:32px;padding:0 8px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);background:#fff;color:var(--ink2);font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .18s;}
+.page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── Review ──────────────────────────────────────────────── */
+.review-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
+.review-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.review-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.review-text-box{background:var(--paper);border:1px solid var(--paper3);border-radius:var(--radius-sm);padding:12px 14px;font-size:13.5px;line-height:1.7;color:var(--ink2);min-height:80px;}
+.review-text-box .lang-tag{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink4);margin-bottom:6px}
+.review-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+
+/* ── Modal ───────────────────────────────────────────────── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:none;align-items:center;justify-content:center;}
+.modal-backdrop.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius);padding:28px;width:90%;max-width:680px;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto;}
+.modal h2{font-family:var(--serif);font-size:20px;font-weight:500;margin-bottom:20px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px}
+.modal textarea{height:140px}
+
+/* ── Loading ─────────────────────────────────────────────── */
+.loading{display:none;position:fixed;inset:0;background:rgba(250,248,244,0.8);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid var(--paper3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:var(--ink3)}
+
+.error-state{text-align:center;padding:48px 20px;color:var(--ink3)}
+.error-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.5;color:var(--red)}
+.error-state p{font-size:14px;margin-bottom:16px}
+
+@media(max-width:768px){
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
+  .trans-grid,.charts-grid,.review-pair,.modal-grid{grid-template-columns:1fr}
+  .content{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── Admin Login Overlay ──────────────────────────────── -->
+<div class="admin-overlay hidden" id="adminOverlay">
+  <div class="admin-card">
+    <div class="admin-logo">Bhasha<span>Setu</span></div>
+    <div class="admin-subtitle">Admin access required</div>
+    <div class="admin-divider">sign in to continue</div>
+    <div class="admin-field">
+      <label>Password</label>
+      <input type="password" id="adminPwInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
+      <div class="admin-err" id="adminErr"></div>
+    </div>
+    <button class="admin-btn" onclick="tryAdminLogin()">Sign in <i class="ti ti-arrow-right"></i></button>
+    <div class="admin-back"><a onclick="closeAdminOverlay()">← Back to app</a></div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading...</p>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Edit Modal -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h2>Edit Translation</h2>
+    <div class="modal-grid">
+      <div>
+        <div class="trans-panel-header">
+          <span class="trans-lang-badge" id="editSrcBadge"></span>
+        </div>
+        <textarea id="editSrcText" placeholder="Source text..."></textarea>
+        <div class="validation-msg" id="editSrcVal"></div>
+      </div>
+      <div>
+        <div class="trans-panel-header">
+          <span class="trans-lang-badge" id="editTgtBadge"></span>
+        </div>
+        <textarea id="editTgtText" placeholder="Target text..."></textarea>
+        <div class="validation-msg" id="editTgtVal"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()"><i class="ti ti-device-floppy"></i> Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">Bhasha<span>Setu</span></div>
+      <div class="tagline">Translation Corpus Builder</div>
+    </div>
+    <nav class="nav">
+      <!-- Public -->
+      <button class="nav-item active" onclick="showPage('collect')" data-page="collect">
+        <i class="ti ti-language"></i> Create Data
+      </button>
+      <button class="nav-item" onclick="showPage('dashboard')" data-page="dashboard">
+        <i class="ti ti-chart-bar"></i> Dashboard
+      </button>
+      <!-- Admin only -->
+      <div id="adminNavSection" style="display:none">
+        <div class="nav-section-label">Admin</div>
+        <button class="nav-item" onclick="showPage('data')" data-page="data">
+          <i class="ti ti-table"></i> Browse Data
+        </button>
+        <button class="nav-item" onclick="showPage('review')" data-page="review">
+          <i class="ti ti-clipboard-check"></i> Review Queue
+          <span id="pendingBadge" style="margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:999px;display:none"></span>
+        </button>
+      </div>
+      <!-- Auth buttons -->
+      <div id="adminLoginPromptWrap" style="margin-top:8px">
+        <button class="admin-login-prompt" onclick="openAdminOverlay()">
+          <i class="ti ti-lock" style="font-size:14px"></i> Admin sign in
+        </button>
+      </div>
+      <div id="adminLogoutWrap" style="display:none;margin-top:4px">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px">
+          <span class="admin-badge"><i class="ti ti-shield-check" style="font-size:11px"></i> Admin</span>
+        </div>
+        <button class="admin-logout-btn" onclick="adminLogout()">
+          <i class="ti ti-logout" style="font-size:14px"></i> Sign out
+        </button>
+      </div>
+    </nav>
+    <div class="sidebar-stats">
+      <div class="stat-row"><span>Total entries</span><strong id="sideTotal">—</strong></div>
+      <div class="stat-row"><span>Approved</span><strong id="sideApproved" style="color:#6fcf97">—</strong></div>
+      <div class="stat-row"><span>Pending</span><strong id="sidePending" style="color:#f2994a">—</strong></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">
+        <span id="pageTitle">Collect Data</span>
+        <small id="pageDesc">Add a new English ↔ Indian language translation pair</small>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="index.html" class="btn btn-secondary btn-sm"><i class="ti ti-home"></i> Home</a>
+        <button class="btn btn-secondary btn-sm" onclick="toggleDarkMode()" id="darkBtn" title="Toggle dark mode"><i class="ti ti-moon"></i></button>
+        <!-- Export: admin only -->
+        <button class="btn btn-secondary btn-sm admin-only-ui" id="exportBtn" onclick="downloadCSV()" style="display:none"><i class="ti ti-download"></i> Export CSV</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- COLLECT -->
+      <div class="page active" id="page-collect">
+        <div class="card">
+          <div class="card-title">Select language pair</div>
+          <div class="lang-row">
+            <div class="lang-select-wrap">
+              <label>Source language</label>
+              <select id="srcLang" onchange="onLangChange()"><option value="">— choose —</option></select>
+            </div>
+            <button class="swap-btn" onclick="swapLangs()" title="Swap languages"><i class="ti ti-arrows-exchange"></i></button>
+            <div class="lang-select-wrap">
+              <label>Target language</label>
+              <select id="tgtLang" onchange="onLangChange()"><option value="">— choose —</option></select>
+            </div>
+          </div>
+          <div class="trans-grid" id="transGrid" style="display:none">
+            <div class="trans-panel">
+              <div class="trans-panel-header">
+                <span class="trans-lang-badge" id="srcBadge">—</span>
+                <div class="trans-panel-actions">
+                  <button class="paste-btn" onclick="pasteText('src')"><i class="ti ti-clipboard" style="font-size:13px"></i> Paste</button>
+                  <button class="clear-btn" onclick="clearText('src')"><i class="ti ti-x" style="font-size:12px"></i> Clear</button>
+                </div>
+              </div>
+              <textarea id="srcText" placeholder="Type or paste source text here..." oninput="onTextInput('src')"></textarea>
+              <div class="char-count" id="srcCount">0 characters</div>
+              <div class="validation-msg" id="srcVal"></div>
+            </div>
+            <div class="trans-panel">
+              <div class="trans-panel-header">
+                <span class="trans-lang-badge" id="tgtBadge">—</span>
+                <div class="trans-panel-actions">
+                  <button class="paste-btn" onclick="pasteText('tgt')"><i class="ti ti-clipboard" style="font-size:13px"></i> Paste</button>
+                  <button class="clear-btn" onclick="clearText('tgt')"><i class="ti ti-x" style="font-size:12px"></i> Clear</button>
+                </div>
+              </div>
+              <textarea id="tgtText" placeholder="Type or paste translation here..." oninput="onTextInput('tgt')"></textarea>
+              <div class="char-count" id="tgtCount">0 characters</div>
+              <div class="validation-msg" id="tgtVal"></div>
+            </div>
+          </div>
+          <div class="action-row" id="actionRow" style="display:none">
+            <button class="btn btn-primary" onclick="saveEntry()" id="saveBtn"><i class="ti ti-device-floppy"></i> Save to Database</button>
+            <button class="btn btn-secondary" onclick="clearAll()"><i class="ti ti-trash"></i> Clear all</button>
+            <span style="font-size:12px;color:var(--ink4);margin-left:auto" id="cleanHint">Data will be auto-cleaned before saving</span>
+          </div>
+        </div>
+        <div class="card" id="previewCard" style="display:none">
+          <div class="card-title" style="font-size:14px;color:var(--ink3)"><i class="ti ti-sparkles" style="color:var(--accent)"></i> Cleaned preview</div>
+          <div class="trans-grid">
+            <div>
+              <div style="font-size:11px;color:var(--ink4);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px" id="previewSrcLang"></div>
+              <div style="background:var(--paper);border-radius:var(--radius-sm);padding:12px;font-size:13.5px;color:var(--ink2);line-height:1.7;min-height:60px" id="previewSrc"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--ink4);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px" id="previewTgtLang"></div>
+              <div style="background:var(--paper);border-radius:var(--radius-sm);padding:12px;font-size:13.5px;color:var(--ink2);line-height:1.7;min-height:60px" id="previewTgt"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="page" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card accent"><div class="val" id="dTotal">—</div><div class="lbl">Total entries</div></div>
+          <div class="stat-card green"><div class="val" id="dApproved">—</div><div class="lbl">Approved</div></div>
+          <div class="stat-card amber"><div class="val" id="dPending">—</div><div class="lbl">Pending review</div></div>
+          <div class="stat-card red"><div class="val" id="dRejected">—</div><div class="lbl">Rejected</div></div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card"><h3>Entries by language pair</h3><div class="chart-wrap"><canvas id="pairChart"></canvas></div></div>
+          <div class="chart-card"><h3>Review status breakdown</h3><div class="chart-wrap"><canvas id="statusChart"></canvas></div></div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <div class="card-title" style="font-size:14px">Filter by language pair</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <select class="filter-select" id="dashFilterSrc" onchange="renderFilteredChart()"><option value="">All source languages</option></select>
+            <span style="color:var(--ink3)">→</span>
+            <select class="filter-select" id="dashFilterTgt" onchange="renderFilteredChart()"><option value="">All target languages</option></select>
+          </div>
+          <div class="chart-wrap" style="height:200px;margin-top:16px"><canvas id="filteredChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- DATA (admin only) -->
+      <div class="page" id="page-data">
+        <div class="table-toolbar">
+          <div class="search-wrap"><i class="ti ti-search"></i><input class="search-box" id="searchBox" type="text" placeholder="Search text, language..." oninput="renderTable()"/></div>
+          <select class="filter-select" id="filterSrc" onchange="renderTable()"><option value="">All source langs</option></select>
+          <select class="filter-select" id="filterTgt" onchange="renderTable()"><option value="">All target langs</option></select>
+          <select class="filter-select" id="filterStatus" onchange="renderTable()"><option value="">All statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option></select>
+        </div>
+        <div style="background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Source lang</th><th>Target lang</th><th>Source text</th><th>Target text</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+          <div id="tableEmpty" class="empty-state" style="display:none"><i class="ti ti-database-off"></i><p>No entries found.</p></div>
+          <div id="tableError" class="error-state" style="display:none"><i class="ti ti-wifi-off"></i><p id="tableErrorMsg">Failed to load data.</p><button class="btn btn-secondary btn-sm" onclick="refreshData()"><i class="ti ti-refresh"></i> Retry</button></div>
+        </div>
+        <div style="font-size:12px;color:var(--ink4);margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <span id="tableCount"></span>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+
+      <!-- REVIEW (admin only) -->
+      <div class="page" id="page-review">
+        <div id="reviewList"></div>
+        <div id="reviewEmpty" class="empty-state" style="display:none"><i class="ti ti-circle-check"></i><p>No pending entries. All caught up!</p></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+/* ── Languages ───────────────────────────────────────────── */
+const LANGUAGES = [
+  { code:"English",   label:"English",   flag:"🇬🇧", script:/^[\u0000-\u007F\s\p{P}]+$/u },
+  { code:"Hindi",     label:"Hindi",     flag:"🇮🇳", script:/[\u0900-\u097F]/ },
+  { code:"Tamil",     label:"Tamil",     flag:"🇮🇳", script:/[\u0B80-\u0BFF]/ },
+  { code:"Telugu",    label:"Telugu",    flag:"🇮🇳", script:/[\u0C00-\u0C7F]/ },
+  { code:"Kannada",   label:"Kannada",   flag:"🇮🇳", script:/[\u0C80-\u0CFF]/ },
+  { code:"Malayalam", label:"Malayalam", flag:"🇮🇳", script:/[\u0D00-\u0D7F]/ },
+  { code:"Bengali",   label:"Bengali",   flag:"🇮🇳", script:/[\u0980-\u09FF]/ },
+  { code:"Assamese",  label:"Assamese",  flag:"🇮🇳", script:/[\u0980-\u09FF]/ },
+  { code:"Marathi",   label:"Marathi",   flag:"🇮🇳", script:/[\u0900-\u097F]/ },
+  { code:"Gujarati",  label:"Gujarati",  flag:"🇮🇳", script:/[\u0A80-\u0AFF]/ },
+  { code:"Punjabi",   label:"Punjabi",   flag:"🇮🇳", script:/[\u0A00-\u0A7F]/ },
+  { code:"Odia",      label:"Odia",      flag:"🇮🇳", script:/[\u0B00-\u0B7F]/ },
+  { code:"Urdu",      label:"Urdu",      flag:"🇮🇳", script:/[\u0600-\u06FF]/ },
+  { code:"Bodo",      label:"Bodo",      flag:"🇮🇳", script:/[\u0900-\u097F]/ },
+];
+const DEVANAGARI_LANGS = new Set(["Hindi","Marathi","Bodo"]);
+const BENGALI_LANGS    = new Set(["Bengali","Assamese"]);
+
+let allEntries=[], editingId=null, currentPage=1;
+const PAGE_SIZE=50;
+let pairChartInst=null, statusChartInst=null, filteredChartInst=null;
+let hasUnsavedText=false;
+
+/* ── Admin auth ──────────────────────────────────────────── */
+function isAdmin() { return localStorage.getItem(ADMIN_STORAGE_KEY)==='1'; }
+
+function openAdminOverlay() {
+  document.getElementById('adminPwInput').value='';
+  document.getElementById('adminErr').textContent='';
+  document.getElementById('adminPwInput').classList.remove('err');
+  document.getElementById('adminOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('adminPwInput').focus(),80);
+}
+
+function closeAdminOverlay() { document.getElementById('adminOverlay').classList.add('hidden'); }
+
+function tryAdminLogin() {
+  const pw=document.getElementById('adminPwInput').value;
+  if (pw===ADMIN_PASSWORD) {
+    localStorage.setItem(ADMIN_STORAGE_KEY,'1');
+    closeAdminOverlay();
+    applyAdminUI();
+    showToast("Admin access granted.","success");
+  } else {
+    document.getElementById('adminPwInput').classList.add('err');
+    document.getElementById('adminErr').innerHTML='<i class="ti ti-alert-circle" style="font-size:13px"></i> Incorrect password.';
+    document.getElementById('adminPwInput').focus();
+  }
+}
+
+function adminLogout() {
+  localStorage.removeItem(ADMIN_STORAGE_KEY);
+  applyAdminUI();
+  showPage('collect');
+  showToast("Signed out of admin.","info");
+}
+
+function applyAdminUI() {
+  const admin=isAdmin();
+  document.getElementById('adminNavSection').style.display = admin?'block':'none';
+  document.getElementById('adminLoginPromptWrap').style.display = admin?'none':'block';
+  document.getElementById('adminLogoutWrap').style.display = admin?'block':'none';
+  document.querySelectorAll('.admin-only-ui').forEach(el=>el.style.display=admin?'':'none');
+  // If currently on an admin-only page and logged out, redirect
+  if (!admin) {
+    const cur=document.querySelector('.page.active');
+    if (cur&&(cur.id==='page-data'||cur.id==='page-review')) showPage('collect');
+  }
+}
+
+/* ── Dark mode ───────────────────────────────────────────── */
+window.addEventListener('beforeunload',e=>{if(hasUnsavedText){e.preventDefault();e.returnValue='';}});
+
+function toggleDarkMode(){
+  const isDark=document.body.classList.toggle('dark');
+  localStorage.setItem('bhashasetu_dark',isDark?'1':'0');
+  document.getElementById('darkBtn').innerHTML=isDark?'<i class="ti ti-sun"></i>':'<i class="ti ti-moon"></i>';
+}
+function applyStoredDarkMode(){
+  if(localStorage.getItem('bhashasetu_dark')==='1'){
+    document.body.classList.add('dark');
+    const btn=document.getElementById('darkBtn');
+    if(btn)btn.innerHTML='<i class="ti ti-sun"></i>';
+  }
+}
+
+/* ── Language helpers ────────────────────────────────────── */
+function buildLangOptions(selectEl,includeEmpty=true){
+  selectEl.innerHTML=includeEmpty?'<option value="">— choose —</option>':'';
+  LANGUAGES.forEach(l=>{const o=document.createElement('option');o.value=l.code;o.textContent=l.flag+' '+l.label;selectEl.appendChild(o);});
+}
+function buildFilterOptions(selectEl,placeholder){
+  selectEl.innerHTML=`<option value="">${placeholder}</option>`;
+  LANGUAGES.forEach(l=>{const o=document.createElement('option');o.value=l.code;o.textContent=l.label;selectEl.appendChild(o);});
+}
+
+/* ── Supabase helpers ────────────────────────────────────── */
+function generateId(){return "T"+Date.now()+Math.floor(Math.random()*1000);}
+async function sbAdd({sourceLang,targetLang,sourceText,targetText,status}){
+  try{const res=await fetch(TABLE,{method:"POST",headers:SB_HEADERS,body:JSON.stringify({id:generateId(),source_lang:sourceLang,target_lang:targetLang,source_text:sourceText,target_text:targetText,status:status||"Pending"})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+}
+async function sbGetAll(){
+  try{const res=await fetch(TABLE+"?order=created_at.desc",{headers:SB_HEADERS});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}const rows=await res.json();return{ok:true,entries:rows.map(r=>({ID:r.id,Timestamp:r.created_at,SourceLang:r.source_lang,TargetLang:r.target_lang,SourceText:r.source_text,TargetText:r.target_text,Status:r.status,EditedAt:r.edited_at}))};}catch(e){return{ok:false,error:e.message};}
+}
+async function sbUpdate({id,sourceText,targetText}){
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS,body:JSON.stringify({source_text:sourceText,target_text:targetText,edited_at:new Date().toISOString()})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+}
+async function sbDelete({id}){
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"DELETE",headers:SB_HEADERS});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+}
+async function sbReview({id,status}){
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS,body:JSON.stringify({status})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+}
+async function sbCheckDuplicate({sourceLang,targetLang,sourceText}){
+  try{const url=TABLE+"?source_lang=eq."+encodeURIComponent(sourceLang)+"&target_lang=eq."+encodeURIComponent(targetLang)+"&source_text=eq."+encodeURIComponent(sourceText)+"&select=id&limit=1";const res=await fetch(url,{headers:SB_HEADERS});if(!res.ok)return{isDuplicate:false};const rows=await res.json();return{isDuplicate:rows.length>0};}catch{return{isDuplicate:false};}
+}
+
+/* ── Export CSV ──────────────────────────────────────────── */
+function downloadCSV(){
+  if(!isAdmin()){showToast("Admin access required.","error");return;}
+  const search=(document.getElementById('searchBox')?.value||'').toLowerCase();
+  const srcF=document.getElementById('filterSrc')?.value||'';
+  const tgtF=document.getElementById('filterTgt')?.value||'';
+  const statusF=document.getElementById('filterStatus')?.value||'';
+  const toExport=allEntries.filter(e=>(!srcF||e.SourceLang===srcF)&&(!tgtF||e.TargetLang===tgtF)&&(!statusF||e.Status===statusF)&&(!search||(e.SourceText||'').toLowerCase().includes(search)||(e.TargetText||'').toLowerCase().includes(search)||(e.SourceLang||'').toLowerCase().includes(search)||(e.TargetLang||'').toLowerCase().includes(search)));
+  if(!toExport.length){showToast("No data to export with current filters.","error");return;}
+  const keys=["ID","Timestamp","SourceLang","TargetLang","SourceText","TargetText","Status","EditedAt"];
+  const rows=toExport.map(e=>keys.map(h=>'"'+String(e[h]||'').replace(/"/g,'""')+'"').join(","));
+  const csv=[keys.join(","),...rows].join("\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  const suffix=[srcF,tgtF,statusF].filter(Boolean).join("_")||"all";
+  a.download="bhashasetu_"+suffix+".csv";a.click();
+  showToast("Exported "+toExport.length+" entries.","success");
+}
+
+/* ── Text cleaning & validation ──────────────────────────── */
+function cleanText(str){return str.replace(/[\u{1F000}-\u{1FFFF}]/gu,'').replace(/[\u{2600}-\u{27BF}]/gu,'').replace(/[\uFE00-\uFE0F]/g,'').replace(/[\u200B-\u200D\uFEFF]/g,'').replace(/[ \t]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();}
+
+function validateScript(text,langCode){
+  if(!text.trim())return{valid:false,message:"Text cannot be empty."};
+  const lang=LANGUAGES.find(l=>l.code===langCode);
+  if(!lang)return{valid:true};
+  if(langCode==="English"){const stripped=text.replace(/[\u2018\u2019\u201A\u201B]/g,"'").replace(/[\u201C\u201D\u201E\u201F]/g,'"').replace(/[\u2013\u2014\u2015]/g,'-').replace(/\u2026/g,'...').replace(/[\u00A0\u202F\u2009]/g,' ').replace(/[\u2032\u2033]/g,"'");if(/[^\u0000-\u00FF]/.test(stripped))return{valid:false,message:"English column should contain only Latin/English characters."};return{valid:true};}
+  const chars=text.replace(/\s/g,'');
+  if(!chars)return{valid:false,message:"Text cannot be empty."};
+  let match=0;for(const ch of chars){if(lang.script.test(ch))match++;}
+  const ratio=match/chars.length;
+  if(ratio<0.3){if(DEVANAGARI_LANGS.has(langCode)){const ds=/[\u0900-\u097F]/;let dm=0;for(const ch of chars){if(ds.test(ch))dm++;}if(dm/chars.length>=0.3)return{valid:true};}if(BENGALI_LANGS.has(langCode)){const bs=/[\u0980-\u09FF]/;let bm=0;for(const ch of chars){if(bs.test(ch))bm++;}if(bm/chars.length>=0.3)return{valid:true};}return{valid:false,message:`This column expects ${langCode} script. Please type in ${langCode}, not transliteration or another language.`};}
+  return{valid:true};
+}
+
+/* ── Collect page logic ──────────────────────────────────── */
+function onLangChange(){
+  const src=document.getElementById('srcLang').value,tgt=document.getElementById('tgtLang').value;
+  if(src&&tgt&&src!==tgt){document.getElementById('transGrid').style.display='grid';document.getElementById('actionRow').style.display='flex';document.getElementById('srcBadge').textContent=src;document.getElementById('tgtBadge').textContent=tgt;document.getElementById('srcText').placeholder=`Type or paste ${src} text here...`;document.getElementById('tgtText').placeholder=`Type or paste ${tgt} translation here...`;clearValidation();}
+  else{document.getElementById('transGrid').style.display='none';document.getElementById('actionRow').style.display='none';}
+}
+function swapLangs(){const s=document.getElementById('srcLang'),t=document.getElementById('tgtLang');[s.value,t.value]=[t.value,s.value];onLangChange();const st=document.getElementById('srcText'),tt=document.getElementById('tgtText');[st.value,tt.value]=[tt.value,st.value];onTextInput('src');onTextInput('tgt');}
+function onTextInput(side){const el=document.getElementById(side+'Text'),cnt=document.getElementById(side+'Count');cnt.textContent=el.value.length+' characters';clearValidation(side);updatePreview();hasUnsavedText=!!(document.getElementById('srcText').value.trim()||document.getElementById('tgtText').value.trim());}
+function updatePreview(){const src=document.getElementById('srcText').value,tgt=document.getElementById('tgtText').value;if(!src&&!tgt){document.getElementById('previewCard').style.display='none';return;}document.getElementById('previewCard').style.display='block';document.getElementById('previewSrcLang').textContent=document.getElementById('srcLang').value;document.getElementById('previewTgtLang').textContent=document.getElementById('tgtLang').value;document.getElementById('previewSrc').textContent=cleanText(src)||'—';document.getElementById('previewTgt').textContent=cleanText(tgt)||'—';}
+async function pasteText(side){try{const t=await navigator.clipboard.readText();document.getElementById(side+'Text').value=t;onTextInput(side);}catch{showToast("Paste not available — use Ctrl+V in the text box.","error");}}
+function clearText(side){document.getElementById(side+'Text').value='';onTextInput(side);}
+function clearAll(){clearText('src');clearText('tgt');document.getElementById('previewCard').style.display='none';clearValidation();hasUnsavedText=false;}
+function showVal(side,msg,isError){const el=document.getElementById(side+'Val');el.className='validation-msg '+(isError?'error':'success');el.innerHTML=`<i class="ti ti-${isError?'alert-circle':'circle-check'}"></i> ${msg}`;document.getElementById(side+'Text').classList.toggle('error',isError);}
+function clearValidation(side){(side?[side]:['src','tgt']).forEach(s=>{document.getElementById(s+'Val').className='validation-msg';document.getElementById(s+'Text').classList.remove('error');});}
+
+async function saveEntry(){
+  const srcLang=document.getElementById('srcLang').value,tgtLang=document.getElementById('tgtLang').value;
+  const srcText=cleanText(document.getElementById('srcText').value),tgtText=cleanText(document.getElementById('tgtText').value);
+  const srcV=validateScript(srcText,srcLang),tgtV=validateScript(tgtText,tgtLang);
+  const ENGLISH_ERR="English column should contain only Latin/English characters.";
+  const srcSoft=!srcV.valid&&srcV.message===ENGLISH_ERR,tgtSoft=!tgtV.valid&&tgtV.message===ENGLISH_ERR;
+  if(!srcV.valid)showVal('src',srcV.message,true);else showVal('src','Looks good!',false);
+  if(!tgtV.valid)showVal('tgt',tgtV.message,true);else showVal('tgt','Looks good!',false);
+  if((!srcV.valid&&!srcSoft)||(!tgtV.valid&&!tgtSoft)){showToast("Please fix the errors before saving.","error");return;}
+  showLoading("Checking for duplicates...");
+  const dupCheck=await sbCheckDuplicate({sourceLang:srcLang,targetLang:tgtLang,sourceText:srcText});
+  if(dupCheck.isDuplicate){hideLoading();showToast("This source text already exists for this language pair.","error");return;}
+  const hasSoftError=srcSoft||tgtSoft,status=hasSoftError?"Pending":"Approved";
+  document.getElementById('loadingMsg').textContent=hasSoftError?"Sending for review...":"Saving...";
+  const result=await sbAdd({sourceLang:srcLang,targetLang:tgtLang,sourceText:srcText,targetText:tgtText,status});
+  hideLoading();
+  if(result.ok){showToast(hasSoftError?"Sent for review.":"Entry saved!","success");hasUnsavedText=false;clearAll();await refreshData();}
+  else showToast("Save failed: "+(result.error||"Unknown error"),"error");
+}
+
+/* ── Data loading ────────────────────────────────────────── */
+async function refreshData(){
+  if(!SUPABASE_URL)return;
+  const tableErr=document.getElementById('tableError');
+  if(tableErr)tableErr.style.display='none';
+  const result=await sbGetAll();
+  if(result.ok){allEntries=result.entries||[];updateSidebarStats();currentPage=1;renderTable();renderReviewQueue();buildStatsFromEntries();}
+  else{if(tableErr){tableErr.style.display='block';document.getElementById('tableErrorMsg').textContent="Failed to load data: "+(result.error||"Connection error.");}showToast("Failed to load data. Check your connection.","error");}
+}
+
+function buildStatsFromEntries(){
+  const pairs={},statuses={Pending:0,Approved:0,Rejected:0};
+  allEntries.forEach(e=>{const k=e.SourceLang+"→"+e.TargetLang;pairs[k]=(pairs[k]||0)+1;if(statuses[e.Status]!==undefined)statuses[e.Status]++;});
+  renderDashboard({pairs,statuses,total:allEntries.length});
+}
+
+function updateSidebarStats(){
+  document.getElementById('sideTotal').textContent=allEntries.length;
+  document.getElementById('sideApproved').textContent=allEntries.filter(e=>e.Status==='Approved').length;
+  const pending=allEntries.filter(e=>e.Status==='Pending').length;
+  document.getElementById('sidePending').textContent=pending;
+  const pb=document.getElementById('pendingBadge');
+  if(pending>0){pb.textContent=pending;pb.style.display='inline';}else pb.style.display='none';
+}
+
+/* ── Dashboard ───────────────────────────────────────────── */
+function renderDashboard(stats){
+  document.getElementById('dTotal').textContent=stats.total;
+  document.getElementById('dApproved').textContent=stats.statuses.Approved||0;
+  document.getElementById('dPending').textContent=stats.statuses.Pending||0;
+  document.getElementById('dRejected').textContent=stats.statuses.Rejected||0;
+  if(pairChartInst)pairChartInst.destroy();
+  pairChartInst=new Chart(document.getElementById('pairChart'),{type:'bar',data:{labels:Object.keys(stats.pairs),datasets:[{data:Object.values(stats.pairs),backgroundColor:'#c84b2f',borderRadius:5,label:'Entries'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}}}}});
+  if(statusChartInst)statusChartInst.destroy();
+  statusChartInst=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Pending','Approved','Rejected'],datasets:[{data:[stats.statuses.Pending||0,stats.statuses.Approved||0,stats.statuses.Rejected||0],backgroundColor:['#f2994a','#27ae60','#e74c3c'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},cutout:'65%'}});
+  renderFilteredChart();
+}
+function renderFilteredChart(){
+  const srcF=document.getElementById('dashFilterSrc')?.value||'',tgtF=document.getElementById('dashFilterTgt')?.value||'';
+  const pairCounts={};
+  allEntries.filter(e=>(!srcF||e.SourceLang===srcF)&&(!tgtF||e.TargetLang===tgtF)).forEach(e=>{const k=e.SourceLang+'→'+e.TargetLang;pairCounts[k]=(pairCounts[k]||0)+1;});
+  if(filteredChartInst)filteredChartInst.destroy();
+  filteredChartInst=new Chart(document.getElementById('filteredChart'),{type:'bar',data:{labels:Object.keys(pairCounts),datasets:[{data:Object.values(pairCounts),backgroundColor:'#1a5fa8',borderRadius:5,label:'Entries'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+function getFilteredEntries(){
+  const search=(document.getElementById('searchBox')?.value||'').toLowerCase();
+  const srcF=document.getElementById('filterSrc')?.value||'',tgtF=document.getElementById('filterTgt')?.value||'',statusF=document.getElementById('filterStatus')?.value||'';
+  return allEntries.filter(e=>(!srcF||e.SourceLang===srcF)&&(!tgtF||e.TargetLang===tgtF)&&(!statusF||e.Status===statusF)&&(!search||(e.SourceText||'').toLowerCase().includes(search)||(e.TargetText||'').toLowerCase().includes(search)||(e.SourceLang||'').toLowerCase().includes(search)||(e.TargetLang||'').toLowerCase().includes(search)));
+}
+function renderTable(){
+  if(!isAdmin())return;
+  const filtered=getFilteredEntries();
+  const tbody=document.getElementById('tableBody'),empty=document.getElementById('tableEmpty'),cnt=document.getElementById('tableCount'),pagDiv=document.getElementById('pagination');
+  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';cnt.textContent='';if(pagDiv)pagDiv.innerHTML='';return;}
+  empty.style.display='none';
+  const totalPages=Math.ceil(filtered.length/PAGE_SIZE);
+  if(currentPage>totalPages)currentPage=totalPages;
+  const start=(currentPage-1)*PAGE_SIZE,paged=filtered.slice(start,start+PAGE_SIZE);
+  cnt.textContent=`Showing ${start+1}–${Math.min(start+PAGE_SIZE,filtered.length)} of ${filtered.length} entries`;
+  tbody.innerHTML=paged.map((e,i)=>`<tr><td style="color:var(--ink4);font-size:12px">${start+i+1}</td><td><span class="badge" style="background:var(--accentbg);color:var(--accent)">${e.SourceLang||''}</span></td><td><span class="badge" style="background:var(--bluebg);color:var(--blue)">${e.TargetLang||''}</span></td><td class="text-cell" title="${escHtml(e.SourceText||'')}">${escHtml((e.SourceText||'').substring(0,60))}${(e.SourceText||'').length>60?'…':''}</td><td class="text-cell" title="${escHtml(e.TargetText||'')}">${escHtml((e.TargetText||'').substring(0,60))}${(e.TargetText||'').length>60?'…':''}</td><td><span class="badge badge-${(e.Status||'pending').toLowerCase()}">${e.Status||'Pending'}</span></td><td style="color:var(--ink4);font-size:12px;white-space:nowrap">${formatDate(e.Timestamp)}</td><td><div style="display:flex;gap:4px"><button class="icon-btn edit" title="Edit" onclick="openEdit('${e.ID}')"><i class="ti ti-pencil"></i></button><button class="icon-btn del" title="Delete" onclick="deleteEntry('${e.ID}')"><i class="ti ti-trash"></i></button></div></td></tr>`).join('');
+  if(!pagDiv||totalPages<=1){if(pagDiv)pagDiv.innerHTML='';return;}
+  let pgHtml=`<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for(let p=1;p<=totalPages;p++){if(totalPages>7&&p>2&&p<totalPages-1&&Math.abs(p-currentPage)>1){if(p===3||p===totalPages-2)pgHtml+='<span style="color:var(--ink4);padding:0 4px">…</span>';continue;}pgHtml+=`<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;}
+  pgHtml+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  pagDiv.innerHTML=pgHtml;
+}
+function goPage(p){currentPage=p;renderTable();document.getElementById('page-data').scrollIntoView({behavior:'smooth',block:'start'});}
+
+/* ── Review ──────────────────────────────────────────────── */
+function renderReviewQueue(){
+  if(!isAdmin())return;
+  const pending=allEntries.filter(e=>e.Status==='Pending'),list=document.getElementById('reviewList'),empty=document.getElementById('reviewEmpty');
+  if(!pending.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=pending.map(e=>`<div class="review-card"><div class="review-card-header"><div style="display:flex;align-items:center;gap:8px"><span class="badge" style="background:var(--accentbg);color:var(--accent)">${e.SourceLang}</span><i class="ti ti-arrow-right" style="color:var(--ink4)"></i><span class="badge" style="background:var(--bluebg);color:var(--blue)">${e.TargetLang}</span><span class="badge badge-pending">Pending</span></div><span style="font-size:12px;color:var(--ink4)">${formatDate(e.Timestamp)}</span></div><div class="review-pair"><div class="review-text-box"><div class="lang-tag">${e.SourceLang}</div>${escHtml(e.SourceText||'')}</div><div class="review-text-box"><div class="lang-tag">${e.TargetLang}</div>${escHtml(e.TargetText||'')}</div></div><div class="review-actions"><button class="btn btn-danger btn-sm" onclick="reviewEntry('${e.ID}','Rejected')"><i class="ti ti-x"></i> Reject</button><button class="btn btn-success btn-sm" onclick="reviewEntry('${e.ID}','Approved')"><i class="ti ti-check"></i> Approve</button></div></div>`).join('');
+}
+
+/* ── Edit modal ──────────────────────────────────────────── */
+function openEdit(id){
+  if(!isAdmin()){showToast("Admin access required.","error");return;}
+  const e=allEntries.find(x=>x.ID===id);if(!e)return;editingId=id;
+  document.getElementById('editSrcBadge').textContent=e.SourceLang;
+  document.getElementById('editTgtBadge').textContent=e.TargetLang;
+  document.getElementById('editSrcText').value=e.SourceText||'';
+  document.getElementById('editTgtText').value=e.TargetText||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeModal(){document.getElementById('editModal').classList.remove('open');editingId=null;}
+async function saveEdit(){
+  const e=allEntries.find(x=>x.ID===editingId);
+  const srcText=cleanText(document.getElementById('editSrcText').value),tgtText=cleanText(document.getElementById('editTgtText').value);
+  const srcV=validateScript(srcText,e.SourceLang),tgtV=validateScript(tgtText,e.TargetLang);
+  let hasErr=false;
+  const sv=document.getElementById('editSrcVal'),tv=document.getElementById('editTgtVal');
+  if(!srcV.valid){sv.className='validation-msg error';sv.innerHTML=`<i class="ti ti-alert-circle"></i> ${srcV.message}`;hasErr=true;}else sv.className='validation-msg';
+  if(!tgtV.valid){tv.className='validation-msg error';tv.innerHTML=`<i class="ti ti-alert-circle"></i> ${tgtV.message}`;hasErr=true;}else tv.className='validation-msg';
+  if(hasErr)return;
+  showLoading("Updating entry...");
+  const result=await sbUpdate({id:editingId,sourceText:srcText,targetText:tgtText});
+  hideLoading();
+  if(result.ok){showToast("Entry updated!","success");closeModal();await refreshData();}
+  else showToast("Update failed: "+(result.error||"Unknown"),"error");
+}
+
+async function deleteEntry(id){
+  if(!isAdmin()){showToast("Admin access required.","error");return;}
+  if(!confirm("Delete this entry? This cannot be undone."))return;
+  showLoading("Deleting...");
+  const result=await sbDelete({id});hideLoading();
+  if(result.ok){showToast("Entry deleted.","info");await refreshData();}
+  else showToast("Delete failed: "+(result.error||""),"error");
+}
+async function reviewEntry(id,status){
+  if(!isAdmin()){showToast("Admin access required.","error");return;}
+  showLoading(status+"ing entry...");
+  const result=await sbReview({id,status});hideLoading();
+  if(result.ok){showToast("Marked as "+status+".","success");await refreshData();}
+  else showToast("Failed: "+(result.error||""),"error");
+}
+
+/* ── Page routing ────────────────────────────────────────── */
+const PAGE_TITLES={
+  collect:{title:"Collect Data",desc:"Add a new English ↔ Indian language translation pair"},
+  dashboard:{title:"Dashboard",desc:"Overview of collected translation data"},
+  data:{title:"Browse Data",desc:"Search, filter, edit and delete all entries"},
+  review:{title:"Review Queue",desc:"Approve or reject pending translation entries"},
+};
+function showPage(name){
+  if((name==='data'||name==='review')&&!isAdmin()){openAdminOverlay();return;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const navBtn=document.querySelector(`[data-page="${name}"]`);
+  if(navBtn)navBtn.classList.add('active');
+  document.getElementById('pageTitle').textContent=PAGE_TITLES[name].title;
+  document.getElementById('pageDesc').textContent=PAGE_TITLES[name].desc;
+  if(name==='dashboard')buildStatsFromEntries();
+}
+
+/* ── Utilities ───────────────────────────────────────────── */
+function formatDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}catch{return iso;}}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function showToast(msg,type='info'){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast '+type;t.innerHTML=`<i class="ti ti-${type==='success'?'circle-check':type==='error'?'alert-circle':'info-circle'}"></i> ${msg}`;c.appendChild(t);setTimeout(()=>t.remove(),3500);}
+function showLoading(msg='Loading...'){document.getElementById('loadingMsg').textContent=msg;document.getElementById('loading').classList.add('show');}
+function hideLoading(){document.getElementById('loading').classList.remove('show');}
+
+/* ── Init ────────────────────────────────────────────────── */
+function init(){
+  applyStoredDarkMode();
+  applyAdminUI();
+  buildLangOptions(document.getElementById('srcLang'));
+  buildLangOptions(document.getElementById('tgtLang'));
+  buildFilterOptions(document.getElementById('filterSrc'),'All source langs');
+  buildFilterOptions(document.getElementById('filterTgt'),'All target langs');
+  buildFilterOptions(document.getElementById('dashFilterSrc'),'All source languages');
+  buildFilterOptions(document.getElementById('dashFilterTgt'),'All target languages');
+  document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+  // Check URL for admin auto-open
+  if(new URLSearchParams(window.location.search).get('admin')==='1'&&!isAdmin())openAdminOverlay();
+  refreshData();
+}
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
