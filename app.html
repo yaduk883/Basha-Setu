@@ -6,15 +6,11 @@
 <title>BhashaSetu — Translation Data Collector</title>
 
 <script>
-  cconst SB_HEADERS = () => getAuthHeaders();
+  const SUPABASE_URL = "__SUPABASE_URL__";
+  const SUPABASE_KEY = "__SUPABASE_KEY__";
+  const AUTH_URL = SUPABASE_URL + "/auth/v1";
   const TABLE = SUPABASE_URL + "/rest/v1/translations";
-
-  /* ── ADMIN CONFIG ─────────────────────────────────────────
-     Change ADMIN_PASSWORD to whatever you want.
-     ADMIN_STORAGE_KEY is just the localStorage key name.
-  ─────────────────────────────────────────────────────────── */
-  const ADMIN_PASSWORD = "__ADMIN_PASSWORD__";
-  const ADMIN_STORAGE_KEY = "bhashasetu_admin";
+  const SB_HEADERS = () => getAuthHeaders();
 </script>
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M16 75 Q50 35 84 75' fill='none' stroke='%23e8622a' stroke-width='5' stroke-linecap='round'/><line x1='16' y1='75' x2='16' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><line x1='84' y1='75' x2='84' y2='87' stroke='%23e8622a' stroke-width='4' stroke-linecap='round'/><text x='50' y='68' font-family='Georgia,serif' font-size='36' font-weight='700' fill='white' text-anchor='middle'>BS</text></svg>"/>
@@ -38,19 +34,10 @@
   --sans:'DM Sans',sans-serif;--serif:'Fraunces',serif;
   --shadow:0 2px 16px rgba(0,0,0,0.07);--shadow-lg:0 8px 40px rgba(0,0,0,0.12);
 }
-
 /* ── Admin Login Overlay ─────────────────────────────────── */
-.admin-overlay{
-  position:fixed;inset:0;background:var(--paper);
-  z-index:500;display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:0;
-}
+.admin-overlay{position:fixed;inset:0;background:var(--paper);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;}
 .admin-overlay.hidden{display:none}
-.admin-card{
-  background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);
-  padding:36px 40px;width:90%;max-width:380px;box-shadow:var(--shadow-lg);
-  text-align:center;
-}
+.admin-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:36px 40px;width:90%;max-width:380px;box-shadow:var(--shadow-lg);text-align:center;}
 .admin-logo{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink);margin-bottom:4px}
 .admin-logo span{color:var(--accent2)}
 .admin-subtitle{font-size:13px;color:var(--ink3);margin-bottom:28px}
@@ -58,54 +45,24 @@
 .admin-divider::before,.admin-divider::after{content:'';flex:1;height:1px;background:var(--paper3)}
 .admin-field{text-align:left;margin-bottom:14px}
 .admin-field label{display:block;font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
-.admin-field input{
-  width:100%;padding:10px 14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);
-  font-family:var(--sans);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;
-}
+.admin-field input{width:100%;padding:10px 14px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;color:var(--ink);outline:none;transition:border-color .2s;}
 .admin-field input:focus{border-color:var(--accent)}
 .admin-field input.err{border-color:var(--red)}
 .admin-err{font-size:12px;color:var(--red);margin-top:6px;min-height:18px;display:flex;align-items:center;gap:5px}
-.admin-btn{
-  width:100%;padding:11px;background:var(--accent);color:#fff;border:none;
-  border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;font-weight:500;
-  cursor:pointer;transition:background .2s;margin-top:4px;
-}
+.admin-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:background .2s;margin-top:4px;}
 .admin-btn:hover{background:var(--accent2)}
-.admin-back{
-  margin-top:16px;font-size:13px;color:var(--ink3);
-}
+.admin-btn:disabled{background:var(--ink4);cursor:not-allowed}
+.admin-back{margin-top:16px;font-size:13px;color:var(--ink3);}
 .admin-back a{color:var(--accent);text-decoration:none;cursor:pointer}
 .admin-back a:hover{text-decoration:underline}
-
 /* ── Admin Badge in sidebar ──────────────────────────────── */
-.admin-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;
-  background:rgba(200,75,47,0.18);color:var(--accent2);
-  padding:2px 8px;border-radius:999px;margin-left:auto;
-}
-.admin-logout-btn{
-  display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);
-  font-size:12px;color:rgba(255,255,255,0.4);cursor:pointer;transition:all .18s;
-  background:none;border:none;width:100%;text-align:left;margin-top:2px;
-}
+.admin-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;background:rgba(200,75,47,0.18);color:var(--accent2);padding:2px 8px;border-radius:999px;margin-left:auto;}
+.admin-logout-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);font-size:12px;color:rgba(255,255,255,0.4);cursor:pointer;transition:all .18s;background:none;border:none;width:100%;text-align:left;margin-top:2px;}
 .admin-logout-btn:hover{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.7)}
-.admin-login-prompt{
-  display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);
-  font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;transition:all .18s;
-  background:none;border:1px dashed rgba(255,255,255,0.12);width:100%;text-align:left;margin-top:6px;
-}
+.admin-login-prompt{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:var(--radius-sm);font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;transition:all .18s;background:none;border:1px dashed rgba(255,255,255,0.12);width:100%;text-align:left;margin-top:6px;}
 .admin-login-prompt:hover{border-color:rgba(200,75,47,0.5);color:rgba(255,255,255,0.7)}
-
 /* ── Dark Mode ───────────────────────────────────────────── */
-body.dark{
-  --ink:#f0ede6;--ink2:#c8c4bc;--ink3:#888;--ink4:#555;
-  --paper:#141210;--paper2:#1e1b18;--paper3:#2a2620;
-  --accentbg:rgba(200,75,47,0.15);--greenbg:rgba(42,122,75,0.15);
-  --amberbg:rgba(184,110,0,0.15);--redbg:rgba(192,57,43,0.15);
-  --bluebg:rgba(26,95,168,0.15);
-  --shadow:0 2px 16px rgba(0,0,0,0.3);--shadow-lg:0 8px 40px rgba(0,0,0,0.5);
-}
+body.dark{--ink:#f0ede6;--ink2:#c8c4bc;--ink3:#888;--ink4:#555;--paper:#141210;--paper2:#1e1b18;--paper3:#2a2620;--accentbg:rgba(200,75,47,0.15);--greenbg:rgba(42,122,75,0.15);--amberbg:rgba(184,110,0,0.15);--redbg:rgba(192,57,43,0.15);--bluebg:rgba(26,95,168,0.15);--shadow:0 2px 16px rgba(0,0,0,0.3);--shadow-lg:0 8px 40px rgba(0,0,0,0.5);}
 body.dark .admin-overlay{background:var(--paper)}
 body.dark .admin-card{background:#1e1e1e;border-color:#2e2e2e}
 body.dark .admin-field input{background:#1e1e1e;border-color:#2e2e2e;color:var(--ink)}
@@ -131,10 +88,8 @@ body.dark .loading{background:rgba(20,18,16,0.85)}
 body.dark .filter-select{background:var(--paper2);color:var(--ink);border-color:var(--paper3)}
 body.dark select option{background:#1e1e1e}
 body.dark .search-box,body.dark .filter-select{background:var(--paper2);border-color:var(--paper3)}
-
 html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;transition:background .25s,color .25s}
 .app-shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-
 /* ── Sidebar ─────────────────────────────────────────────── */
 .sidebar{background:var(--ink);color:#fff;display:flex;flex-direction:column;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .sidebar-brand{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
@@ -150,7 +105,6 @@ html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(-
 .sidebar-stats{padding:16px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto}
 .sidebar-stats .stat-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px}
 .sidebar-stats .stat-row strong{color:rgba(255,255,255,0.9);font-size:15px;font-weight:500}
-
 /* ── Main ────────────────────────────────────────────────── */
 .main{min-height:100vh;display:flex;flex-direction:column}
 .topbar{padding:20px 32px;border-bottom:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between;background:var(--paper);position:sticky;top:0;z-index:10;}
@@ -159,11 +113,9 @@ html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(-
 .content{padding:32px;flex:1}
 .page{display:none}
 .page.active{display:block}
-
 /* ── Cards ───────────────────────────────────────────────── */
 .card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:24px;margin-bottom:20px;}
 .card-title{font-family:var(--serif);font-size:17px;font-weight:500;margin-bottom:16px;color:var(--ink)}
-
 /* ── Language Selector ───────────────────────────────────── */
 .lang-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
 .lang-select-wrap{flex:1;min-width:160px}
@@ -172,7 +124,6 @@ select{width:100%;padding:10px 14px;border:1.5px solid var(--paper3);border-radi
 select:focus{border-color:var(--accent)}
 .swap-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--paper3);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:16px;transition:all .2s;margin-top:20px;flex-shrink:0;}
 .swap-btn:hover{border-color:var(--accent);color:var(--accent);transform:rotate(180deg)}
-
 /* ── Translation Grid ────────────────────────────────────── */
 .trans-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .trans-panel{position:relative}
@@ -190,7 +141,6 @@ textarea::placeholder{color:var(--ink4)}
 .validation-msg{font-size:12px;padding:8px 12px;border-radius:var(--radius-sm);margin-top:6px;display:none;align-items:center;gap:6px;}
 .validation-msg.error{display:flex;background:var(--redbg);color:var(--red)}
 .validation-msg.success{display:flex;background:var(--greenbg);color:var(--green)}
-
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--radius-sm);border:none;font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:all .18s;}
 .btn-primary{background:var(--accent);color:#fff}
@@ -204,7 +154,6 @@ textarea::placeholder{color:var(--ink4)}
 .btn-success:hover{background:#d4edde}
 .btn-sm{padding:6px 12px;font-size:12px}
 .action-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-
 /* ── Toast ───────────────────────────────────────────────── */
 .toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 18px;border-radius:var(--radius-sm);font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:8px;animation:slideUp .3s ease;box-shadow:var(--shadow-lg);max-width:340px;}
@@ -212,7 +161,6 @@ textarea::placeholder{color:var(--ink4)}
 .toast.error{background:var(--red);color:#fff}
 .toast.info{background:var(--ink);color:#fff}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-
 /* ── Stats ───────────────────────────────────────────────── */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
 .stat-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:18px 20px;}
@@ -226,7 +174,6 @@ textarea::placeholder{color:var(--ink4)}
 .chart-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:24px}
 .chart-card h3{font-family:var(--serif);font-size:15px;font-weight:500;margin-bottom:16px;color:var(--ink)}
 .chart-wrap{position:relative;height:240px}
-
 /* ── Table ───────────────────────────────────────────────── */
 .table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
 .search-box{flex:1;min-width:200px;padding:9px 14px 9px 36px;border:1.5px solid var(--paper3);border-radius:var(--radius-sm);font-family:var(--sans);font-size:13.5px;color:var(--ink);background:#fff;outline:none;transition:border-color .2s;}
@@ -257,7 +204,6 @@ textarea::placeholder{color:var(--ink4)}
 .page-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .page-btn:disabled{opacity:.35;cursor:not-allowed}
-
 /* ── Review ──────────────────────────────────────────────── */
 .review-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
 .review-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
@@ -265,7 +211,6 @@ textarea::placeholder{color:var(--ink4)}
 .review-text-box{background:var(--paper);border:1px solid var(--paper3);border-radius:var(--radius-sm);padding:12px 14px;font-size:13.5px;line-height:1.7;color:var(--ink2);min-height:80px;}
 .review-text-box .lang-tag{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink4);margin-bottom:6px}
 .review-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
-
 /* ── Modal ───────────────────────────────────────────────── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;display:none;align-items:center;justify-content:center;}
 .modal-backdrop.open{display:flex}
@@ -274,18 +219,15 @@ textarea::placeholder{color:var(--ink4)}
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
 .modal-actions{display:flex;justify-content:flex-end;gap:10px}
 .modal textarea{height:140px}
-
 /* ── Loading ─────────────────────────────────────────────── */
 .loading{display:none;position:fixed;inset:0;background:rgba(250,248,244,0.8);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
 .loading.show{display:flex}
 .spinner{width:36px;height:36px;border:3px solid var(--paper3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading p{font-size:13px;color:var(--ink3)}
-
 .error-state{text-align:center;padding:48px 20px;color:var(--ink3)}
 .error-state i{font-size:36px;margin-bottom:12px;display:block;opacity:.5;color:var(--red)}
 .error-state p{font-size:14px;margin-bottom:16px}
-
 @media(max-width:768px){
   .app-shell{grid-template-columns:1fr}
   .sidebar{height:auto;position:relative;flex-direction:row;flex-wrap:wrap}
@@ -303,19 +245,15 @@ textarea::placeholder{color:var(--ink4)}
     <div class="admin-subtitle">Admin access required</div>
     <div class="admin-divider">sign in to continue</div>
     <div class="admin-field">
-  <label>Email</label>
-  <input type="email" id="adminEmailInput" placeholder="Enter admin email" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
-</div>
-<div class="admin-field">
-  <label>Email</label>
-  <input type="email" id="adminEmailInput" placeholder="Enter admin email" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
-</div>
-<div class="admin-field">
-  <label>Password</label>
-  <input type="password" id="adminPwInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
-  <div class="admin-err" id="adminErr"></div>
-</div>
-<button class="admin-btn" id="adminLoginBtn" onclick="tryAdminLogin()">Sign in <i class="ti ti-arrow-right"></i></button>
+      <label>Email</label>
+      <input type="email" id="adminEmailInput" placeholder="Enter admin email" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
+    </div>
+    <div class="admin-field">
+      <label>Password</label>
+      <input type="password" id="adminPwInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')tryAdminLogin()"/>
+      <div class="admin-err" id="adminErr"></div>
+    </div>
+    <button class="admin-btn" id="adminLoginBtn" onclick="tryAdminLogin()">Sign in <i class="ti ti-arrow-right"></i></button>
     <div class="admin-back"><a onclick="closeAdminOverlay()">← Back to app</a></div>
   </div>
 </div>
@@ -358,21 +296,18 @@ textarea::placeholder{color:var(--ink4)}
 
 <!-- App Shell -->
 <div class="app-shell">
-
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="logo">Bhasha<span>Setu</span></div>
       <div class="tagline">Translation Corpus Builder</div>
     </div>
     <nav class="nav">
-      <!-- Public -->
       <button class="nav-item active" onclick="showPage('collect')" data-page="collect">
         <i class="ti ti-language"></i> Create Data
       </button>
       <button class="nav-item" onclick="showPage('dashboard')" data-page="dashboard">
         <i class="ti ti-chart-bar"></i> Dashboard
       </button>
-      <!-- Admin only -->
       <div id="adminNavSection" style="display:none">
         <div class="nav-section-label">Admin</div>
         <button class="nav-item" onclick="showPage('data')" data-page="data">
@@ -383,7 +318,6 @@ textarea::placeholder{color:var(--ink4)}
           <span id="pendingBadge" style="margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:2px 7px;border-radius:999px;display:none"></span>
         </button>
       </div>
-      <!-- Auth buttons -->
       <div id="adminLoginPromptWrap" style="margin-top:8px">
         <button class="admin-login-prompt" onclick="openAdminOverlay()">
           <i class="ti ti-lock" style="font-size:14px"></i> Admin sign in
@@ -414,7 +348,6 @@ textarea::placeholder{color:var(--ink4)}
       <div style="display:flex;gap:8px;align-items:center">
         <a href="index.html" class="btn btn-secondary btn-sm"><i class="ti ti-home"></i> Home</a>
         <button class="btn btn-secondary btn-sm" onclick="toggleDarkMode()" id="darkBtn" title="Toggle dark mode"><i class="ti ti-moon"></i></button>
-        <!-- Export: admin only -->
         <button class="btn btn-secondary btn-sm admin-only-ui" id="exportBtn" onclick="downloadCSV()" style="display:none"><i class="ti ti-download"></i> Export CSV</button>
       </div>
     </div>
@@ -566,50 +499,105 @@ const PAGE_SIZE=50;
 let pairChartInst=null, statusChartInst=null, filteredChartInst=null;
 let hasUnsavedText=false;
 
-/* ── Admin auth ──────────────────────────────────────────── */
-function isAdmin() { return localStorage.getItem(ADMIN_STORAGE_KEY)==='1'; }
+/* ── Supabase Auth ───────────────────────────────────────── */
+function isAdmin() {
+  const session = JSON.parse(localStorage.getItem('bhashasetu_session') || 'null');
+  if (!session) return false;
+  if (new Date(session.expires_at * 1000) < new Date()) {
+    localStorage.removeItem('bhashasetu_session');
+    return false;
+  }
+  return true;
+}
+
+function getAuthHeaders() {
+  const session = JSON.parse(localStorage.getItem('bhashasetu_session') || 'null');
+  return {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + (session ? session.access_token : SUPABASE_KEY),
+    "Prefer": "return=representation"
+  };
+}
 
 function openAdminOverlay() {
-  document.getElementById('adminPwInput').value='';
-  document.getElementById('adminErr').textContent='';
+  document.getElementById('adminEmailInput').value = '';
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminErr').textContent = '';
+  document.getElementById('adminEmailInput').classList.remove('err');
   document.getElementById('adminPwInput').classList.remove('err');
   document.getElementById('adminOverlay').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('adminPwInput').focus(),80);
+  setTimeout(() => document.getElementById('adminEmailInput').focus(), 80);
 }
 
-function closeAdminOverlay() { document.getElementById('adminOverlay').classList.add('hidden'); }
+function closeAdminOverlay() {
+  document.getElementById('adminOverlay').classList.add('hidden');
+}
 
-function tryAdminLogin() {
-  const pw=document.getElementById('adminPwInput').value;
-  if (pw===ADMIN_PASSWORD) {
-    localStorage.setItem(ADMIN_STORAGE_KEY,'1');
-    closeAdminOverlay();
-    applyAdminUI();
-    showToast("Admin access granted.","success");
-  } else {
-    document.getElementById('adminPwInput').classList.add('err');
-    document.getElementById('adminErr').innerHTML='<i class="ti ti-alert-circle" style="font-size:13px"></i> Incorrect password.';
-    document.getElementById('adminPwInput').focus();
+async function tryAdminLogin() {
+  const email = document.getElementById('adminEmailInput').value.trim();
+  const pw = document.getElementById('adminPwInput').value;
+  const btn = document.getElementById('adminLoginBtn');
+  const errEl = document.getElementById('adminErr');
+
+  if (!email || !pw) {
+    errEl.innerHTML = '<i class="ti ti-alert-circle" style="font-size:13px"></i> Please enter email and password.';
+    return;
   }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  errEl.textContent = '';
+
+  try {
+    const res = await fetch(AUTH_URL + "/token?grant_type=password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_KEY },
+      body: JSON.stringify({ email, password: pw })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('adminPwInput').classList.add('err');
+      document.getElementById('adminEmailInput').classList.add('err');
+      errEl.innerHTML = '<i class="ti ti-alert-circle" style="font-size:13px"></i> ' + (data.error_description || 'Invalid email or password.');
+    } else {
+      localStorage.setItem('bhashasetu_session', JSON.stringify(data));
+      closeAdminOverlay();
+      applyAdminUI();
+      showToast("Admin access granted.", "success");
+      await refreshData();
+    }
+  } catch (e) {
+    errEl.innerHTML = '<i class="ti ti-alert-circle" style="font-size:13px"></i> Network error. Please try again.';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Sign in <i class="ti ti-arrow-right"></i>';
 }
 
-function adminLogout() {
-  localStorage.removeItem(ADMIN_STORAGE_KEY);
+async function adminLogout() {
+  const session = JSON.parse(localStorage.getItem('bhashasetu_session') || 'null');
+  if (session) {
+    await fetch(AUTH_URL + "/logout", {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + session.access_token }
+    }).catch(() => {});
+  }
+  localStorage.removeItem('bhashasetu_session');
   applyAdminUI();
   showPage('collect');
-  showToast("Signed out of admin.","info");
+  showToast("Signed out of admin.", "info");
 }
 
 function applyAdminUI() {
-  const admin=isAdmin();
-  document.getElementById('adminNavSection').style.display = admin?'block':'none';
-  document.getElementById('adminLoginPromptWrap').style.display = admin?'none':'block';
-  document.getElementById('adminLogoutWrap').style.display = admin?'block':'none';
-  document.querySelectorAll('.admin-only-ui').forEach(el=>el.style.display=admin?'':'none');
-  // If currently on an admin-only page and logged out, redirect
+  const admin = isAdmin();
+  document.getElementById('adminNavSection').style.display = admin ? 'block' : 'none';
+  document.getElementById('adminLoginPromptWrap').style.display = admin ? 'none' : 'block';
+  document.getElementById('adminLogoutWrap').style.display = admin ? 'block' : 'none';
+  document.querySelectorAll('.admin-only-ui').forEach(el => el.style.display = admin ? '' : 'none');
   if (!admin) {
-    const cur=document.querySelector('.page.active');
-    if (cur&&(cur.id==='page-data'||cur.id==='page-review')) showPage('collect');
+    const cur = document.querySelector('.page.active');
+    if (cur && (cur.id === 'page-data' || cur.id === 'page-review')) showPage('collect');
   }
 }
 
@@ -641,23 +629,24 @@ function buildFilterOptions(selectEl,placeholder){
 
 /* ── Supabase helpers ────────────────────────────────────── */
 function generateId(){return "T"+Date.now()+Math.floor(Math.random()*1000);}
+
 async function sbAdd({sourceLang,targetLang,sourceText,targetText,status}){
-  try{const res=await fetch(TABLE,{method:"POST",headers:SB_HEADERS,body:JSON.stringify({id:generateId(),source_lang:sourceLang,target_lang:targetLang,source_text:sourceText,target_text:targetText,status:status||"Pending"})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+  try{const res=await fetch(TABLE,{method:"POST",headers:SB_HEADERS(),body:JSON.stringify({id:generateId(),source_lang:sourceLang,target_lang:targetLang,source_text:sourceText,target_text:targetText,status:status||"Pending"})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbGetAll(){
-  try{const res=await fetch(TABLE+"?order=created_at.desc",{headers:SB_HEADERS});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}const rows=await res.json();return{ok:true,entries:rows.map(r=>({ID:r.id,Timestamp:r.created_at,SourceLang:r.source_lang,TargetLang:r.target_lang,SourceText:r.source_text,TargetText:r.target_text,Status:r.status,EditedAt:r.edited_at}))};}catch(e){return{ok:false,error:e.message};}
+  try{const res=await fetch(TABLE+"?order=created_at.desc",{headers:SB_HEADERS()});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}const rows=await res.json();return{ok:true,entries:rows.map(r=>({ID:r.id,Timestamp:r.created_at,SourceLang:r.source_lang,TargetLang:r.target_lang,SourceText:r.source_text,TargetText:r.target_text,Status:r.status,EditedAt:r.edited_at}))};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbUpdate({id,sourceText,targetText}){
-  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS,body:JSON.stringify({source_text:sourceText,target_text:targetText,edited_at:new Date().toISOString()})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS(),body:JSON.stringify({source_text:sourceText,target_text:targetText,edited_at:new Date().toISOString()})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbDelete({id}){
-  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"DELETE",headers:SB_HEADERS});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"DELETE",headers:SB_HEADERS()});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbReview({id,status}){
-  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS,body:JSON.stringify({status})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
+  try{const res=await fetch(TABLE+"?id=eq."+id,{method:"PATCH",headers:SB_HEADERS(),body:JSON.stringify({status})});if(!res.ok){const e=await res.json();return{ok:false,error:e.message};}return{ok:true};}catch(e){return{ok:false,error:e.message};}
 }
 async function sbCheckDuplicate({sourceLang,targetLang,sourceText}){
-  try{const url=TABLE+"?source_lang=eq."+encodeURIComponent(sourceLang)+"&target_lang=eq."+encodeURIComponent(targetLang)+"&source_text=eq."+encodeURIComponent(sourceText)+"&select=id&limit=1";const res=await fetch(url,{headers:SB_HEADERS});if(!res.ok)return{isDuplicate:false};const rows=await res.json();return{isDuplicate:rows.length>0};}catch{return{isDuplicate:false};}
+  try{const url=TABLE+"?source_lang=eq."+encodeURIComponent(sourceLang)+"&target_lang=eq."+encodeURIComponent(targetLang)+"&source_text=eq."+encodeURIComponent(sourceText)+"&select=id&limit=1";const res=await fetch(url,{headers:SB_HEADERS()});if(!res.ok)return{isDuplicate:false};const rows=await res.json();return{isDuplicate:rows.length>0};}catch{return{isDuplicate:false};}
 }
 
 /* ── Export CSV ──────────────────────────────────────────── */
@@ -889,7 +878,6 @@ function init(){
   buildFilterOptions(document.getElementById('dashFilterSrc'),'All source languages');
   buildFilterOptions(document.getElementById('dashFilterTgt'),'All target languages');
   document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
-  // Check URL for admin auto-open
   if(new URLSearchParams(window.location.search).get('admin')==='1'&&!isAdmin())openAdminOverlay();
   refreshData();
 }
