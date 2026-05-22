@@ -2,6 +2,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -11,10 +13,7 @@ jobs:
         env:
           ADMIN_PASSWORD_ENV: ${{ secrets.ADMIN_PASSWORD }}
         run: |
-          echo "Password is set: $([ -n "$ADMIN_PASSWORD_ENV" ] && echo YES || echo NO)"
           sed -i "s|__ADMIN_PASSWORD__|$ADMIN_PASSWORD_ENV|g" app.html
-          echo "After injection:"
-          grep -n "ADMIN_PASSWORD" app.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
