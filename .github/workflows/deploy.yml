@@ -1,25 +1,22 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches: [main]
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inject secrets
-        env:
-          SUPABASE_URL_ENV: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY_ENV: ${{ secrets.SUPABASE_KEY }}
-          ADMIN_PASSWORD_ENV: ${{ secrets.ADMIN_PASSWORD }}
+
+      - name: Inject admin password
         run: |
-          echo "Before injection:"
-          grep -n "SUPABASE" app.html
-          sed -i "s|__ADMIN_PASSWORD__|$ADMIN_PASSWORD_ENV|g" app.html
-          echo "After injection:"
-          grep -n "SUPABASE" app.html
+          sed -i "s/__ADMIN_PASSWORD__/${{ secrets.ADMIN_PASSWORD }}/g" app.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
