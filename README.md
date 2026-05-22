@@ -77,6 +77,10 @@ create table translations (
 
 Open `app.html` and update these lines with your own Supabase project details:
 
+> ⚠️ Important: the Supabase **anon/publishable key is safe to use in frontend code**. Security must come from Row Level Security (RLS) policies, not by hiding the anon key in browser DevTools.
+
+If deployed pages show `__SUPABASE_URL__` or fail to load data, make sure your deploy pipeline injects `SUPABASE_URL` and `SUPABASE_KEY` before publishing `app.html`.
+
 ```js
 const SUPABASE_URL = "https://your-project.supabase.co";
 const SUPABASE_KEY = "your-publishable-key";
