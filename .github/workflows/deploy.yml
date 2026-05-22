@@ -13,7 +13,12 @@ jobs:
         env:
           ADMIN_PASSWORD_ENV: ${{ secrets.ADMIN_PASSWORD }}
         run: |
+          echo "Secret is set: $([ -n "$ADMIN_PASSWORD_ENV" ] && echo YES || echo NO)"
+          echo "Before:"
+          grep -n "ADMIN_PASSWORD" app.html
           sed -i "s|__ADMIN_PASSWORD__|$ADMIN_PASSWORD_ENV|g" app.html
+          echo "After:"
+          grep -n "ADMIN_PASSWORD" app.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
