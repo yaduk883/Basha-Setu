@@ -15,9 +15,13 @@ jobs:
           SUPABASE_KEY_ENV: ${{ secrets.SUPABASE_KEY }}
           ADMIN_PASSWORD_ENV: ${{ secrets.ADMIN_PASSWORD }}
         run: |
+          echo "Before injection:"
+          grep -n "SUPABASE" app.html
           sed -i "s|__SUPABASE_URL__|$SUPABASE_URL_ENV|g" app.html
           sed -i "s|__SUPABASE_KEY__|$SUPABASE_KEY_ENV|g" app.html
           sed -i "s|__ADMIN_PASSWORD__|$ADMIN_PASSWORD_ENV|g" app.html
+          echo "After injection:"
+          grep -n "SUPABASE" app.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
